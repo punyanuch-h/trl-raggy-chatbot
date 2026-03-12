@@ -1,0 +1,9 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\Users\admin\Documents\AI LLM\vibe_ISO
+plugins: anyio-4.12.1, langsmith-0.7.16
+collected 2 items
+
+SI\04_Test_Cases_and_Procedures\tests\test_api.py ..                     [100%]
+
+============================== 2 passed in 0.17s ==============================

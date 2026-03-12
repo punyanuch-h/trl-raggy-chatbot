@@ -1,0 +1,382 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\Users\admin\Documents\AI LLM\vibe_ISO
+plugins: anyio-4.12.1
+collected 28 items
+
+tests\test_api.py ...FF.                                                 [ 21%]
+tests\test_chunker.py ....                                               [ 35%]
+tests\test_integration.py ..                                             [ 42%]
+tests\test_pdf_parser.py ...                                             [ 53%]
+tests\test_pinecone.py ..                                                [ 60%]
+tests\test_prompts.py ...                                                [ 71%]
+tests\test_reindex.py ...                                                [ 82%]
+tests\test_retriever.py FF                                               [ 89%]
+tests\test_vector_uploader.py ...                                        [100%]
+
+================================== FAILURES ===================================
+______________________ test_raggy_trl_valid_admin_token _______________________
+
+    def test_raggy_trl_valid_admin_token():
+        """Test that a valid admin token effectively passes authorization and maps the role."""
+        assert client is not None, "API not implemented yet (RED PHASE)"
+    
+        token = create_mock_token({"role": "admin"})
+        headers = {"Authorization": f"Bearer {token}"}
+    
+        # Mocking OpenAI and Pinecone dependencies for this test
+>       with patch("main.rag_retriever.PineconeVectorStore") as MockStore, \
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+             patch("main.rag_retriever.OpenAIEmbeddings") as MockEmbed, \
+             patch("main.ChatOpenAI") as MockChatOpenAI:
+
+tests\test_api.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1451: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'main.rag_retriever'
+
+    def resolve_name(name):
+        """
+        Resolve a name to an object.
+    
+        It is expected that `name` will be a string in one of the following
+        formats, where W is shorthand for a valid Python identifier and dot stands
+        for a literal period in these pseudo-regexes:
+    
+        W(.W)*
+        W(.W)*:(W(.W)*)?
+    
+        The first form is intended for backward compatibility only. It assumes that
+        some part of the dotted name is a package, and the rest is an object
+        somewhere within that package, possibly nested inside other objects.
+        Because the place where the package stops and the object hierarchy starts
+        can't be inferred by inspection, repeated attempts to import must be done
+        with this form.
+    
+        In the second form, the caller makes the division point clear through the
+        provision of a single colon: the dotted name to the left of the colon is a
+        package to be imported, and the dotted name to the right is the object
+        hierarchy within that package. Only one import is needed in this form. If
+        it ends with the colon, then a module object is returned.
+    
+        The function will return an object (which might be a module), or raise one
+        of the following exceptions:
+    
+        ValueError - if `name` isn't in a recognised format
+        ImportError - if an import failed when it shouldn't have
+        AttributeError - if a failure occurred when traversing the object hierarchy
+                         within the imported package to get to the desired object.
+        """
+        global _NAME_PATTERN
+        if _NAME_PATTERN is None:
+            # Lazy import to speedup Python startup time
+            import re
+            dotted_words = r'(?!\d)(\w+)(\.(?!\d)(\w+))*'
+            _NAME_PATTERN = re.compile(f'^(?P<pkg>{dotted_words})'
+                                       f'(?P<cln>:(?P<obj>{dotted_words})?)?$',
+                                       re.UNICODE)
+    
+        m = _NAME_PATTERN.match(name)
+        if not m:
+            raise ValueError(f'invalid format: {name!r}')
+        gd = m.groupdict()
+        if gd.get('cln'):
+            # there is a colon - a one-step import is all that's needed
+            mod = importlib.import_module(gd['pkg'])
+            parts = gd.get('obj')
+            parts = parts.split('.') if parts else []
+        else:
+            # no colon - have to iterate to find the package boundary
+            parts = name.split('.')
+            modname = parts.pop(0)
+            # first part *must* be a module/package.
+            mod = importlib.import_module(modname)
+            while parts:
+                p = parts[0]
+                s = f'{modname}.{p}'
+                try:
+                    mod = importlib.import_module(s)
+                    parts.pop(0)
+                    modname = s
+                except ImportError:
+                    break
+        # if we reach this point, mod is the module, already imported, and
+        # parts is the list of parts in the object hierarchy to be traversed, or
+        # an empty list if just the module is wanted.
+        result = mod
+        for p in parts:
+>           result = getattr(result, p)
+                     ^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'main' has no attribute 'rag_retriever'. Did you mean: 'get_retriever'?
+
+..\..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: AttributeError
+____________ test_raggy_trl_missing_role_downgrades_to_researcher _____________
+
+    def test_raggy_trl_missing_role_downgrades_to_researcher():
+        """Test that a valid token WITHOUT a role securely defaults to 'researcher'."""
+        assert client is not None, "API not implemented yet (RED PHASE)"
+    
+        # Payload missing the 'role' key
+        token = create_mock_token({"user_id": 12345})
+        headers = {"Authorization": f"Bearer {token}"}
+    
+        # Mocking OpenAI and Pinecone dependencies for this test
+>       with patch("main.rag_retriever.PineconeVectorStore") as MockStore, \
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+             patch("main.rag_retriever.OpenAIEmbeddings") as MockEmbed, \
+             patch("main.ChatOpenAI") as MockChatOpenAI:
+
+tests\test_api.py:104: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1451: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'main.rag_retriever'
+
+    def resolve_name(name):
+        """
+        Resolve a name to an object.
+    
+        It is expected that `name` will be a string in one of the following
+        formats, where W is shorthand for a valid Python identifier and dot stands
+        for a literal period in these pseudo-regexes:
+    
+        W(.W)*
+        W(.W)*:(W(.W)*)?
+    
+        The first form is intended for backward compatibility only. It assumes that
+        some part of the dotted name is a package, and the rest is an object
+        somewhere within that package, possibly nested inside other objects.
+        Because the place where the package stops and the object hierarchy starts
+        can't be inferred by inspection, repeated attempts to import must be done
+        with this form.
+    
+        In the second form, the caller makes the division point clear through the
+        provision of a single colon: the dotted name to the left of the colon is a
+        package to be imported, and the dotted name to the right is the object
+        hierarchy within that package. Only one import is needed in this form. If
+        it ends with the colon, then a module object is returned.
+    
+        The function will return an object (which might be a module), or raise one
+        of the following exceptions:
+    
+        ValueError - if `name` isn't in a recognised format
+        ImportError - if an import failed when it shouldn't have
+        AttributeError - if a failure occurred when traversing the object hierarchy
+                         within the imported package to get to the desired object.
+        """
+        global _NAME_PATTERN
+        if _NAME_PATTERN is None:
+            # Lazy import to speedup Python startup time
+            import re
+            dotted_words = r'(?!\d)(\w+)(\.(?!\d)(\w+))*'
+            _NAME_PATTERN = re.compile(f'^(?P<pkg>{dotted_words})'
+                                       f'(?P<cln>:(?P<obj>{dotted_words})?)?$',
+                                       re.UNICODE)
+    
+        m = _NAME_PATTERN.match(name)
+        if not m:
+            raise ValueError(f'invalid format: {name!r}')
+        gd = m.groupdict()
+        if gd.get('cln'):
+            # there is a colon - a one-step import is all that's needed
+            mod = importlib.import_module(gd['pkg'])
+            parts = gd.get('obj')
+            parts = parts.split('.') if parts else []
+        else:
+            # no colon - have to iterate to find the package boundary
+            parts = name.split('.')
+            modname = parts.pop(0)
+            # first part *must* be a module/package.
+            mod = importlib.import_module(modname)
+            while parts:
+                p = parts[0]
+                s = f'{modname}.{p}'
+                try:
+                    mod = importlib.import_module(s)
+                    parts.pop(0)
+                    modname = s
+                except ImportError:
+                    break
+        # if we reach this point, mod is the module, already imported, and
+        # parts is the list of parts in the object hierarchy to be traversed, or
+        # an empty list if just the module is wanted.
+        result = mod
+        for p in parts:
+>           result = getattr(result, p)
+                     ^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'main' has no attribute 'rag_retriever'. Did you mean: 'get_retriever'?
+
+..\..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: AttributeError
+_______________ test_researcher_retrieval_adds_metadata_filter ________________
+
+    def test_researcher_retrieval_adds_metadata_filter():
+        """
+        If the user is a 'researcher', the retriever must inject a metadata
+        filter that explicitly excludes 'admin' role content.
+        """
+        with patch("rag_retriever.PineconeVectorStore") as MockStore:
+            mock_vectorstore = MagicMock()
+            MockStore.from_existing_index.return_value = mock_vectorstore
+    
+            # We need to mock the call to as_retriever()
+            mock_retriever = MagicMock()
+            mock_vectorstore.as_retriever.return_value = mock_retriever
+    
+            from rag_retriever import get_retriever
+    
+            # Test for researcher
+>           get_retriever(role="researcher")
+
+tests\test_retriever.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+rag_retriever.py:19: in get_retriever
+    embeddings = OpenAIEmbeddings(
+.venv\Lib\site-packages\langchain_openai\embeddings\base.py:338: in validate_environment
+    self.client = openai.OpenAI(**client_params, **sync_specific).embeddings  # type: ignore[arg-type]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <openai.OpenAI object at 0x000001F0E3C7E960>
+
+    def __init__(
+        self,
+        *,
+        api_key: str | None | Callable[[], str] = None,
+        organization: str | None = None,
+        project: str | None = None,
+        webhook_secret: str | None = None,
+        base_url: str | httpx.URL | None = None,
+        websocket_base_url: str | httpx.URL | None = None,
+        timeout: float | Timeout | None | NotGiven = not_given,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        default_headers: Mapping[str, str] | None = None,
+        default_query: Mapping[str, object] | None = None,
+        # Configure a custom httpx client.
+        # We provide a `DefaultHttpxClient` class that you can pass to retain the default values we use for `limits`, `timeout` & `follow_redirects`.
+        # See the [httpx documentation](https://www.python-httpx.org/api/#client) for more details.
+        http_client: httpx.Client | None = None,
+        # Enable or disable schema validation for data returned by the API.
+        # When enabled an error APIResponseValidationError is raised
+        # if the API responds with invalid data for the expected schema.
+        #
+        # This parameter may be removed or changed in the future.
+        # If you rely on this feature, please open a GitHub issue
+        # outlining your use-case to help us decide if it should be
+        # part of our public interface in the future.
+        _strict_response_validation: bool = False,
+    ) -> None:
+        """Construct a new synchronous OpenAI client instance.
+    
+        This automatically infers the following arguments from their corresponding environment variables if they are not provided:
+        - `api_key` from `OPENAI_API_KEY`
+        - `organization` from `OPENAI_ORG_ID`
+        - `project` from `OPENAI_PROJECT_ID`
+        - `webhook_secret` from `OPENAI_WEBHOOK_SECRET`
+        """
+        if api_key is None:
+            api_key = os.environ.get("OPENAI_API_KEY")
+        if api_key is None:
+>           raise OpenAIError(
+                "The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable"
+            )
+E           openai.OpenAIError: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+
+.venv\Lib\site-packages\openai\_client.py:135: OpenAIError
+_____________________ test_admin_retrieval_has_no_filter ______________________
+
+    def test_admin_retrieval_has_no_filter():
+        """
+        If the user is an 'admin', the retriever should have no role-based
+        metadata filter, allowing access to all content.
+        """
+        with patch("rag_retriever.PineconeVectorStore") as MockStore:
+            mock_vectorstore = MagicMock()
+            MockStore.from_existing_index.return_value = mock_vectorstore
+            mock_retriever = MagicMock()
+            mock_vectorstore.as_retriever.return_value = mock_retriever
+    
+            from rag_retriever import get_retriever
+    
+            # Test for admin
+>           get_retriever(role="admin")
+
+tests\test_retriever.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+rag_retriever.py:19: in get_retriever
+    embeddings = OpenAIEmbeddings(
+.venv\Lib\site-packages\langchain_openai\embeddings\base.py:338: in validate_environment
+    self.client = openai.OpenAI(**client_params, **sync_specific).embeddings  # type: ignore[arg-type]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <openai.OpenAI object at 0x000001F0E5270290>
+
+    def __init__(
+        self,
+        *,
+        api_key: str | None | Callable[[], str] = None,
+        organization: str | None = None,
+        project: str | None = None,
+        webhook_secret: str | None = None,
+        base_url: str | httpx.URL | None = None,
+        websocket_base_url: str | httpx.URL | None = None,
+        timeout: float | Timeout | None | NotGiven = not_given,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        default_headers: Mapping[str, str] | None = None,
+        default_query: Mapping[str, object] | None = None,
+        # Configure a custom httpx client.
+        # We provide a `DefaultHttpxClient` class that you can pass to retain the default values we use for `limits`, `timeout` & `follow_redirects`.
+        # See the [httpx documentation](https://www.python-httpx.org/api/#client) for more details.
+        http_client: httpx.Client | None = None,
+        # Enable or disable schema validation for data returned by the API.
+        # When enabled an error APIResponseValidationError is raised
+        # if the API responds with invalid data for the expected schema.
+        #
+        # This parameter may be removed or changed in the future.
+        # If you rely on this feature, please open a GitHub issue
+        # outlining your use-case to help us decide if it should be
+        # part of our public interface in the future.
+        _strict_response_validation: bool = False,
+    ) -> None:
+        """Construct a new synchronous OpenAI client instance.
+    
+        This automatically infers the following arguments from their corresponding environment variables if they are not provided:
+        - `api_key` from `OPENAI_API_KEY`
+        - `organization` from `OPENAI_ORG_ID`
+        - `project` from `OPENAI_PROJECT_ID`
+        - `webhook_secret` from `OPENAI_WEBHOOK_SECRET`
+        """
+        if api_key is None:
+            api_key = os.environ.get("OPENAI_API_KEY")
+        if api_key is None:
+>           raise OpenAIError(
+                "The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable"
+            )
+E           openai.OpenAIError: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+
+.venv\Lib\site-packages\openai\_client.py:135: OpenAIError
+============================== warnings summary ===============================
+tests/test_api.py::test_raggy_trl_valid_admin_token
+tests/test_api.py::test_raggy_trl_missing_role_downgrades_to_researcher
+tests/test_api.py::test_invalid_input_returns_polite_response
+  C:\Users\admin\Documents\AI LLM\vibe_ISO\.venv\Lib\site-packages\jwt\api_jwt.py:153: InsecureKeyLengthWarning: The HMAC key is 15 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+tests/test_api.py::test_invalid_input_returns_polite_response
+  C:\Users\admin\Documents\AI LLM\vibe_ISO\.venv\Lib\site-packages\jwt\api_jwt.py:371: InsecureKeyLengthWarning: The HMAC key is 15 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    decoded = self.decode_complete(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_api.py::test_raggy_trl_valid_admin_token - AttributeError: ...
+FAILED tests/test_api.py::test_raggy_trl_missing_role_downgrades_to_researcher
+FAILED tests/test_retriever.py::test_researcher_retrieval_adds_metadata_filter
+FAILED tests/test_retriever.py::test_admin_retrieval_has_no_filter - openai.O...
+================== 4 failed, 24 passed, 4 warnings in 1.32s ===================

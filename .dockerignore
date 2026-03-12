@@ -1,0 +1,21 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.git/
+.gitignore
+source/
+tests/
+SI/
+PM/
+.agent/
+README.md
+run_tests.bat
+tests_summary.bat
+*.pdf
+google-cloud-sdk
+google-cloud-sdk/
+google-cloud-sdk/**
+**/google-cloud-sdk/**
+# We exclude source documents because they are already indexed in Pinecone.
+# Large folders are excluded to keep the Docker image small and secure.

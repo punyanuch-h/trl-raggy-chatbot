@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+langchain==0.3.28
+langchain-community==0.3.31
+langchain-core==0.3.83
+langchain-openai
+langchain-pinecone
+pinecone-client
+openai
+PyJWT
+pypdf
+python-dotenv
+httpx
+pydantic
