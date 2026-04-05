@@ -50,7 +50,8 @@ def test_raggy_trl_returns_real_ai_answer():
         # 6. Assertions
         assert response.status_code == 200
         data = response.json()
-        assert "TRL 4" in data["answer"]
+        assert "answer_markdown" in data
+        assert "TRL 4" in data["answer_markdown"]
         # Verify the chain was actually called
         mock_chain.invoke.assert_called_once()
 

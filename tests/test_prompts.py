@@ -51,3 +51,18 @@ def test_prompt_has_redirect_instruction_for_off_topic():
     assert "only" in prompt_str and "context" in prompt_str
     assert "sorry" in prompt_str or "apologize" in prompt_str
     assert "information" in prompt_str
+
+
+def test_prompt_includes_markdown_safety_rules():
+    """
+    The prompt should explicitly constrain markdown structure so frontend
+    rendering stays predictable.
+    """
+    from rag_prompts import get_trl_prompt
+    prompt_str = str(get_trl_prompt()).lower()
+
+    assert "markdown structure" in prompt_str
+    assert "allowed markdown" in prompt_str
+    assert "disallowed markdown" in prompt_str
+    assert "level-2 heading" in prompt_str
+    assert "bullet" in prompt_str

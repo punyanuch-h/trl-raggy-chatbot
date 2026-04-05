@@ -1,85 +1,116 @@
 # Raggy Bot: Technology Readiness Level (TRL) Expert
 
-Raggy Bot is a professional, high-security Retrieval-Augmented Generation (RAG) API built following **ISO/IEC 29110** standards. It provides context-aware answers regarding TRL levels for the healthcare and education sectors.
+Raggy Bot is a FastAPI-based Retrieval-Augmented Generation (RAG) API for answering Technology Readiness Level questions in healthcare and education contexts.
 
-## 🚀 Key Features
-- **Semantic Search**: Powered by OpenAI `text-embedding-3-small` and Pinecone.
-- **Role-Based Access Control (RBAC)**: Automatic data filtering based on JWT roles (`admin` vs. `researcher`).
-- **Polite AI Persona**: Optimized for professional healthcare environments.
-- **Cloud Ready**: Fully containerized for Google Cloud Run with Secret Manager support.
+## Key points
+- The primary endpoint is `POST /raggy/trl`.
+- The current response contract returns one canonical field: `answer_markdown`.
+- Local runs default to `http://127.0.0.1:8080`.
+- Cloud deployments use the `PORT` environment variable.
 
----
-
-## 🛠️ Step 1: Local Setup
-
-### 1. Clone & Initialize
+## Local setup
 ```bash
-# Create virtual environment
 python -m venv .venv
-source .venv/bin/activate  # Windows: .\.venv\Scripts\activate
-
-# Install dependencies
+source .venv/bin/activate  # Windows PowerShell: .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
-Create a `.env` file in the root directory:
-```bash
-# Security
-JWT_SECRET=your_secure_random_string
+Create a root `.env` file:
 
-# AI Engines
+```env
+JWT_SECRET=your_secure_random_string
 OPENAI_API_KEY=sk-your-openai-key
+OPENAI_BASE_URL=https://api.openai.com/v1
 PINECONE_API_KEY=your-pinecone-key
 PINECONE_INDEX_NAME=trl-raggy-chatbot
+FIRESTORE_PROJECT_ID=your-gcp-project-id
+FIRESTORE_DATABASE_ID=(default)
+FIRESTORE_METADATA_COLLECTION=request_metadata
 ```
 
----
+Optional local toggle:
 
-## 📂 Step 2: Knowledge Ingestion
-Raggy Bot learns from PDFs placed in the `source/` folder.
-- **Public Docs**: Place in `source/`
-- **Private Docs**: Place in `source/private/` (Only admins can access these).
+```env
+METADATA_STORE_ENABLED=true
+```
 
-Run the re-indexing utility to upload to Pinecone:
+## Knowledge ingestion
+Place PDFs in:
+- `source/` for general documents
+- `source/private/` for admin-only documents
+
+Then re-index:
+
 ```bash
 python reindex.py
 ```
 
----
-
-## ⚡ Step 3: Running & Testing
-
-### 1. Launch the API
+## Run locally
 ```bash
 python main.py
 ```
-*The API will be available at `http://localhost:8080` (or `8001` if specified in code).*
 
-### 2. Run Automated Tests (TDD)
-We maintain a strict 100% pass rate.
-```bash
-# Using the custom ISO test script
+The API and Swagger UI will be available at:
+- `http://127.0.0.1:8080`
+- `http://127.0.0.1:8080/docs`
+
+## `/raggy/trl` contract
+Request:
+
+```json
+{
+  "query": "What are TRL levels 1 to 9?"
+}
+```
+
+Response:
+
+```json
+{
+  "answer_markdown": "## TRL Response\n\nTRL 1 begins with basic principles..."
+}
+```
+
+`answer_markdown` is the canonical output intended for frontend rendering. The API no longer duplicates the same content into a second plain-text field.
+
+The API also accepts optional audit headers:
+- `X-Request-ID` to reuse a caller-generated correlation id
+- `X-Session-ID` to group related requests without storing transcript content
+
+Successful responses echo `X-Request-ID` in the response headers.
+
+## Internal metadata review
+Sprint 7 adds metadata-only persistence for audit and monitoring. Phase 1 intentionally excludes `query`, `answer`, `answer_markdown`, and retrieved context.
+
+Admin-only verification endpoints:
+- `GET /internal/metadata/requests?limit=20`
+- `GET /internal/metadata/sessions/{session_id}`
+
+Stored fields:
+- `request_id`
+- `session_id`
+- `user_id`
+- `role`
+- `timestamp`
+- `response_status`
+- `route_path`
+- `model_name`
+
+## Testing
+Run the standard local suite:
+
+```powershell
 .\run_tests.bat
 ```
 
-### 3. Interactive Documentation
-Visit `http://localhost:8080/docs` to view the interactive Swagger UI and test endpoint calls.
+Or run targeted tests:
 
----
+```powershell
+.\.venv\Scripts\pytest.exe tests\test_api.py tests\test_integration.py tests\test_response_formatter.py tests\test_prompts.py
+```
 
-## ☁️ Step 4: Production Deployment
-To deploy to **Google Cloud Run**, refer to:
-- `PM/GCP_Secret_Setup.md`: To upload keys to Secret Manager.
-- `PM/deploy_instructions.md`: For the final `gcloud` deployment command.
-
----
-
-## 📄 Documentation Index
-- **User Manual**: `SI/06_User_Manual/User_Manual.md`
-- **Architecture**: `SI/02_Software_Design/Architecture_Design.md`
-- **Project Journey**: `SI/07_Product_Release/Development_Journey_Summary.md`
-
----
-**Status**: v1.0 Release Candidate
-**Standard**: ISO/IEC 29110 Basic Profile
+## Documentation
+- [LOCALHOST_API_GUIDE_TH.md](/c:/Users/hcuna/Documents/Senior/trl-raggy-chatbot/LOCALHOST_API_GUIDE_TH.md)
+- [SI/06_User_Manual/User_Manual.md](/c:/Users/hcuna/Documents/Senior/trl-raggy-chatbot/SI/06_User_Manual/User_Manual.md)
+- [SI/02_Software_Design/Architecture_Design.md](/c:/Users/hcuna/Documents/Senior/trl-raggy-chatbot/SI/02_Software_Design/Architecture_Design.md)
+- [SI/02_Software_Design/openapi.json](/c:/Users/hcuna/Documents/Senior/trl-raggy-chatbot/SI/02_Software_Design/openapi.json)

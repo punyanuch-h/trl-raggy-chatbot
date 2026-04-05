@@ -1,39 +1,78 @@
 # Raggy Bot: User Manual (TRL Expert)
 
 ## 1. Introduction
-Welcome to **Raggy Bot**, your professional AI assistant specializing in Technology Readiness Levels (TRL) for the healthcare and education sectors. Raggy Bot uses Retrieval-Augmented Generation (RAG) to provide accurate, context-aware answers based on official documentation.
+Raggy Bot is a professional AI assistant for Technology Readiness Level (TRL) questions in healthcare and education contexts. It uses Retrieval-Augmented Generation (RAG) so answers stay grounded in project documents.
 
 ## 2. Getting Started
 ### Prerequisites
-- An active JWT (JSON Web Token) with a `role` claim (`admin` or `researcher`).
-- The API endpoint URL (provided after deployment).
+- A valid JWT with a `role` claim of `admin` or `researcher`
+- The deployed API URL, or `http://127.0.0.1:8080` for local use
 
 ## 3. Using the API
-### The `/raggy/trl` Endpoint
-Send a `POST` request to the following endpoint:
+### Endpoint
 `POST /raggy/trl`
 
-**Request Headers:**
+### Request headers
 - `Content-Type: application/json`
 - `Authorization: Bearer <your_jwt_token>`
+- Optional: `X-Request-ID: <client_correlation_id>`
+- Optional: `X-Session-ID: <session_group_id>`
 
-**Request Body:**
+### Request body
 ```json
 {
   "query": "What are the characteristics of TRL 4 in a laboratory environment?"
 }
 ```
 
-## 4. Understanding Roles & Access
-Raggy Bot enforces **Role-Based Access Control (RBAC)** at the database level:
-- **Admin**: Has full access to all documentation, including private research in the `source/private` folder.
-- **Researcher**: Has access only to public/general TRL documentation. Any private data is automatically filtered out.
+### Response body
+```json
+{
+  "answer_markdown": "## TRL Response\n\nTRL 4 focuses on component validation in a laboratory environment."
+}
+```
 
-## 5. Tone and Constraints
-- **Tone**: The bot is designed to be empathetic, polite, and professional.
-- **Accuracy**: The bot will *only* answer based on the provided PDF documentation.
-- **Safety**: If the bot does not know the answer, it will politely decline to guess. If you ask a question unrelated to TRL, it will ask you to stay on topic.
+## 4. Understanding the Markdown Output
+- `answer_markdown` is the only response field returned by the endpoint.
+- It is the canonical presentation format for clients and should be rendered as markdown.
+- The backend constrains output to safe markdown patterns: one level-2 heading, short paragraphs, and simple hyphen bullets.
+- Raw HTML, tables, code fences, and deep heading hierarchies are intentionally out of scope.
 
-## 6. Troubleshooting
-- **"I apologize, but I couldn't verify your access"**: Your JWT token is either missing, expired, or invalid.
-- **"I encountered a technical difficulty"**: The API is having trouble connecting to the database or AI engine. Wait a few moments and try again.
+## 5. Understanding Roles & Access
+Raggy Bot enforces Role-Based Access Control (RBAC):
+- `admin` can access public and private TRL documents, including content from `source/private/`
+- `researcher` can access only public/general TRL documents
+
+## 6. Tone and Constraints
+- The bot uses a polite, professional, and supportive tone
+- The bot answers only from the indexed PDF documentation
+- If the context is insufficient, the bot declines to guess
+- If the question is off-topic, the bot redirects the user back to TRL-related questions
+
+## 7. Troubleshooting
+- If the response asks you to log in again, the JWT is missing, invalid, or expired
+- If the response mentions a technical difficulty, the API could not complete retrieval or LLM processing
+- If the response format looks unexpected, check the current OpenAPI contract in `SI/02_Software_Design/openapi.json`
+
+## 8. Metadata Audit Review
+Sprint 7 stores metadata only for monitoring and audit support. It does not store conversation transcript content.
+
+Stored metadata fields:
+- `request_id`
+- `session_id`
+- `user_id`
+- `role`
+- `timestamp`
+- `response_status`
+- `route_path`
+- `model_name`
+
+Excluded fields:
+- `query`
+- `answer`
+- `answer_markdown`
+- retrieved context
+
+Admin-only internal verification endpoints:
+- `GET /internal/metadata/requests?limit=20`
+- `GET /internal/metadata/sessions/{session_id}`

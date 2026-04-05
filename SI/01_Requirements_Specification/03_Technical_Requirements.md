@@ -1,43 +1,74 @@
 # Technical Requirements Specification: Raggy Bot (Version 3)
 
-## 1. Core Architecture Stack (Finalized)
-*   **Operating Language**: Python
-*   **Web Framework**: FastAPI
-*   **LLM Provider**: OpenAI
-*   **Vector Database**: Pinecone (Serverless Cloud DB)
-    *   *Dimensions Rule*: Pinecone must be configured strictly to expect `1536` dimension vectors to align exactly with OpenAI's embedding model.
-*   **Embedding Model**: OpenAI `text-embedding-3-small`
-*   **Orchestration Library**: LangChain
-*   **Testing Suite**: `pytest`
+## 1. Core Architecture Stack
+* **Operating Language**: Python
+* **Web Framework**: FastAPI
+* **LLM Provider**: OpenAI
+* **Vector Database**: Pinecone (Serverless Cloud DB)
+  * *Dimensions Rule*: Pinecone must be configured for `1536`-dimension vectors to align with the embedding model
+* **Embedding Model**: OpenAI `text-embedding-3-small`
+* **Orchestration Library**: LangChain
+* **Testing Suite**: `pytest`
 
-## 2. API Security, CORS, & JWT Decoding
-*   **API Execution**: The Uvicorn ASGI server must strictly bind to **Port `8001`**. 
-*   **CORS Configuration**: FastAPI must configure a CORS Middleware block to explicitly whitelist incoming API traffic originating specifically from the Frontend UI domain (`http://localhost:3000`), thereby preventing browser security blocks.
-*   **Endpoint Route**: The system implements precisely one operational conversational endpoint exposed entirely via POST at the path `/raggy/trl`.
-*   **API JWT Handling**: The Frontend Client (`3000`) is the direct consumer of this microservice. 
-    *   The client MUST send the user's **JWT Token** inside the `Authorization: Bearer <token>` HTTP header.
-    *   Raggy Bot will decode this JWT token to authenticate the user and establish their role. 
-    *   **The Secret Strategy**: Raggy will use a shared `JWT_SECRET` key securely supplied via a local `.env` file to mathematically verify the token signature.
-    *   **Payload Fallback**: Raggy expects the JWT payload to contain a `role` key (i.e. `{"role": "admin"}`). If the decoder succeeds but the key is missing or unrecognizable, the system must immediately and safely downgrade the user to the `researcher` permissions level.
+## 2. API Security, CORS, and Runtime
+* **API Execution**: The Uvicorn ASGI server runs as the FastAPI host process. The local default port is `8080`. Cloud execution uses the `PORT` environment variable.
+* **CORS Configuration**: The API explicitly allows browser requests from `http://localhost:3000`.
+* **Endpoint Route**: The system exposes one conversational endpoint at `POST /raggy/trl`.
+* **API JWT Handling**:
+  * Clients must send `Authorization: Bearer <token>`
+  * The API verifies the token with `JWT_SECRET`
+  * If `role` is missing or malformed, access safely downgrades to `researcher`
 
-## 3. Safe Request Exception Engine
-*   **Graceful Exception Catching Constraint**: The system expects incoming JSON POST bodies or multipart/form data containing a text `query` string. No chat history will be passed.
-*   If the frontend mistakenly sends an image, if validation fails, or if the server timeouts, **FastAPI must not expose HTTP error status codes or JSON stack traces.**
-    *   FastAPI must leverage specialized overriding Exception Handlers to return `HTTP 200 OK` or `HTTP 401 Unauthorized` responses containing a predefined conversational payload:
-    *   *Input Example Response*: `{"answer": "I'm sorry, but I am currently only equipped to answer text-based questions. Please type out your question and I would be happy to help!"}`
-    *   *Security Error Example Response*: `{"answer": "I apologize, but I couldn't securely verify your access session. Could you please try logging in again?"}`
+## 3. Request and Response Contract
+* **Input Contract**: The endpoint accepts a JSON body with a single `query` string
+* **Primary Response Contract**: The endpoint returns a JSON object containing:
+  * `answer_markdown` as the canonical markdown response field
+* **API Clarity Rule**: The contract uses a single answer field because there is no confirmed production frontend or external consumer that requires backward compatibility with an older plain-text field
+* **Formatting Rule**: `answer_markdown` must remain safe for frontend markdown rendering
 
-## 4. LLM Generation Directives (Healthcare & Education Focus)
-*   **Prompt Engineering Structure**: The system prompt injected via LangChain MUST strictly define the persona. Due to its deployment within the healthcare and education systems, the prompt must constrain OpenAI to only generate tokens using an **extremely polite, supportive, patient, and professional tone**.
+## 4. Safe Request Exception Engine
+* **Graceful Exception Constraint**: Validation, authentication, and internal failures must return polite conversational payloads instead of raw framework errors
+* **Response Shape Consistency**:
+  * *Input Example Response Shape*: `{"answer_markdown": "..."}`
+  * *Security Error Example Response Shape*: `{"answer_markdown": "..."}`
 
-## 5. Data Pipeline & Privacy Control (RBAC)
-*   **Document Ingestion**: The system extracts chunks from root PDF files in two predefined folders:
-    *   `source/` (General documents accessible to everyone)
-    *   `source/private/` (Confidential documents)
-*   **Filter Logic**: The system must rely on strict metadata filtering built directly into the **Pinecone Vector Search query layer**.
-    *   When embedding a PDF from the `source/private/` folder into Pinecone, it must be tagged with restricted metadata (e.g., `role: admin`). 
-    *   When the API handles a request where the JWT translates the user to an identity of a `researcher`, the Vector search must explicitly exclude any chunks matching that restricted metadata *before* supplying context to the OpenAI LLM. 
+## 5. LLM Generation Directives
+* **Prompt Engineering Structure**: The system prompt must enforce a polite, supportive, professional tone suitable for healthcare and education contexts
+* **Markdown Safety Rule**: The model output must use only safe markdown constructs suitable for frontend rendering
+  * Allowed structures: one level-2 heading, short paragraphs, and hyphen bullet lists
+  * Disallowed structures: raw HTML, tables, code fences, numbered lists, and deep heading levels
 
-## 6. Evaluation & TDD Directives (ISO 29110)
-*   **Deterministic Elements**: Pipeline components (PDF extraction, JWT Decoding, JSON/Exception serialization, CORS checks) must achieve "Green" state via `pytest` unit testing in `SI/04_Test_Cases_and_Procedures/` directly prior to feature coding.
-*   **Non-Deterministic Outcomes**: generative language responses must leverage specialized test frameworks for LLM validation (such as Ragas or TruLens) assessing Politeness, Faithfulness, and Answer Relevance.
+## 6. Data Pipeline and Privacy Control
+* **Document Ingestion**:
+  * `source/` contains general documents
+  * `source/private/` contains restricted documents
+* **Filter Logic**:
+  * Private documents must be tagged for admin-only access
+  * `researcher` retrieval must exclude restricted chunks before context reaches the LLM
+
+## 7. Evaluation and TDD Directives
+* **Deterministic Elements**: PDF extraction, JWT decoding, JSON serialization, CORS checks, response formatting, and prompt constraints must be covered by `pytest`
+* **Non-Deterministic Outcomes**: Generated answers should be evaluated for faithfulness, relevance, politeness, and output structure consistency
+
+## 8. Metadata Persistence Controls
+* **Phase 1 Storage Scope**: The system may persist request metadata for operational audit and monitoring, but it must not persist transcript content
+* **Approved Metadata Fields**:
+  * `request_id`
+  * `session_id` when provided
+  * `user_id` derived from JWT `sub` or stable user claim
+  * `role`
+  * `timestamp`
+  * `response_status`
+  * `route_path`
+  * `model_name`
+* **Explicitly Excluded Fields**:
+  * `query`
+  * `answer`
+  * `answer_markdown`
+  * retrieved context or prompt content
+* **Storage Backend**: Firestore is the preferred metadata backend for Phase 1 because it supports low-volume per-request writes, simple operational queries, and free-tier alignment for an internal user base of about 100 users
+* **Operational Review Path**: Internal inspection access is admin-only and limited to metadata list and read-by-session workflows
+* **Budget and Retention Guidance**:
+  * Keep metadata in a dedicated collection, default `request_metadata`
+  * Apply time-bounded retention, recommended 30 to 90 days depending on governance approval
+  * Grant the Cloud Run service account only the minimum Firestore document read/write permissions required for this collection

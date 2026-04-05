@@ -2,14 +2,14 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Raggy Bot API",
-    "description": "API Endpoint for TRL Retrieval-Augmented Generation (ISO 29110 compliant)",
+    "description": "API Endpoint for TRL Retrieval-Augmented Generation",
     "version": "1.0.0"
   },
   "paths": {
     "/raggy/trl": {
       "post": {
         "summary": "Process Trl Query",
-        "description": "Accepts a single user query regarding TRL levels.\n(Currently returning mock data until Vector DB logic is added).",
+        "description": "Accepts a single user query regarding TRL levels.\nProcesses the query through the LangChain RAG chain with RBAC enforcement.",
         "operationId": "process_trl_query_raggy_trl_post",
         "requestBody": {
           "content": {
@@ -28,6 +28,100 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/QueryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/internal/metadata/sessions/{session_id}": {
+      "get": {
+        "summary": "Get Metadata By Session",
+        "operationId": "get_metadata_by_session_internal_metadata_sessions__session_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataRecordListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/metadata/requests": {
+      "get": {
+        "summary": "Get Recent Metadata Records",
+        "operationId": "get_recent_metadata_records_internal_metadata_requests_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataRecordListResponse"
                 }
               }
             }
@@ -61,6 +155,76 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "MetadataRecord": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "response_status": {
+            "type": "string",
+            "title": "Response Status"
+          },
+          "route_path": {
+            "type": "string",
+            "title": "Route Path"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "user_id",
+          "role",
+          "timestamp",
+          "response_status",
+          "route_path",
+          "model_name"
+        ],
+        "title": "MetadataRecord"
+      },
+      "MetadataRecordListResponse": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/MetadataRecord"
+            },
+            "type": "array",
+            "title": "Records"
+          }
+        },
+        "type": "object",
+        "required": [
+          "records"
+        ],
+        "title": "MetadataRecordListResponse"
+      },
       "QueryRequest": {
         "properties": {
           "query": {
@@ -76,14 +240,14 @@
       },
       "QueryResponse": {
         "properties": {
-          "answer": {
+          "answer_markdown": {
             "type": "string",
-            "title": "Answer"
+            "title": "Answer Markdown"
           }
         },
         "type": "object",
         "required": [
-          "answer"
+          "answer_markdown"
         ],
         "title": "QueryResponse"
       },
@@ -126,6 +290,12 @@
           "type"
         ],
         "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   }
