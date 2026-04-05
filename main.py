@@ -1,4 +1,5 @@
 import os
+import base64
 import jwt
 from fastapi import FastAPI, Request, Response, Security, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -89,6 +90,67 @@ security = HTTPBearer(auto_error=False)
 class UserRole(BaseModel):
     role: str
     user_id: str
+    user_email: str | None = None
+    client_id: str | None = None
+    client_name: str | None = None
+    is_temp: bool = False
+
+
+def _get_env_public_key_for_kid(kid: str | None) -> str | None:
+    if kid:
+        kid_env_name = f"JWT_PUBLIC_KEY_{str(kid).upper().replace('-', '_')}"
+        if os.environ.get(kid_env_name):
+            return os.environ.get(kid_env_name)
+    return os.environ.get("JWT_PUBLIC_KEY")
+
+
+def _load_public_key_material(kid: str | None) -> str:
+    public_key = _get_env_public_key_for_kid(kid)
+    public_key_file = os.environ.get("JWT_PUBLIC_KEY_FILE")
+
+    if public_key:
+        normalized_key = public_key.strip().replace("\\n", "\n")
+        if "BEGIN PUBLIC KEY" in normalized_key:
+            return normalized_key
+        try:
+            decoded_key = base64.b64decode(normalized_key).decode("utf-8")
+            decoded_key = decoded_key.strip()
+            if "BEGIN PUBLIC KEY" in decoded_key:
+                return decoded_key
+        except Exception:
+            pass
+        return normalized_key
+    if public_key_file:
+        with open(public_key_file, "r", encoding="utf-8") as key_file:
+            return key_file.read()
+    raise HTTPException(status_code=401, detail="Missing RSA verification key")
+
+
+def _get_jwt_decode_kwargs(token: str) -> dict:
+    jwt_audience = os.environ.get("JWT_AUDIENCE")
+    jwt_issuer = os.environ.get("JWT_ISSUER")
+    header = jwt.get_unverified_header(token)
+    algorithm = header.get("alg")
+    kid = header.get("kid")
+
+    if algorithm != "RS256":
+        raise HTTPException(status_code=401, detail="Unsupported Token Algorithm")
+    key = _load_public_key_material(kid)
+
+    decode_kwargs = {
+        "key": key,
+        "algorithms": ["RS256"],
+        "options": {
+            "verify_aud": bool(jwt_audience),
+        },
+    }
+
+    if jwt_audience:
+        decode_kwargs["audience"] = jwt_audience
+    if jwt_issuer:
+        decode_kwargs["issuer"] = jwt_issuer
+
+    return decode_kwargs
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
     """Extracts JWT from header, verifies mathematically, and determines role safely."""
@@ -96,11 +158,10 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
         raise HTTPException(status_code=401, detail="Missing Token")
     
     token = credentials.credentials
-    jwt_secret = os.environ.get("JWT_SECRET", "default_secret")
     
     try:
-        # Tries to decode via symmetric key
-        payload = jwt.decode(token, jwt_secret, algorithms=["HS256"])
+        # Decode signed JWT and keep standard time-based claims enforced.
+        payload = jwt.decode(token, **_get_jwt_decode_kwargs(token))
         
         # Extracts role, defaulting to researcher if missing or malformed to stay safe
         role = payload.get("role", "researcher")
@@ -108,8 +169,19 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
             role = "researcher" 
 
         user_id = str(payload.get("sub") or payload.get("user_id") or "unknown")
+        user_email = payload.get("user_email")
+        client_id = payload.get("client_id")
+        client_name = payload.get("client_name")
+        is_temp = bool(payload.get("is_temp", False))
 
-        return UserRole(role=role, user_id=user_id)
+        return UserRole(
+            role=role,
+            user_id=user_id,
+            user_email=user_email,
+            client_id=client_id,
+            client_name=client_name,
+            is_temp=is_temp,
+        )
     except Exception as e:
         # Catches ExpiredSignatureError, DecodeError, etc.
         print(f"[DEBUG] Auth Failed with token {token[:10]}... Error: {e}")
@@ -244,9 +316,16 @@ if __name__ == "__main__":
     
     # Check for mandatory secrets in production
     if os.environ.get("K_SERVICE"):
-        required_vars = ["OPENAI_API_KEY", "PINECONE_API_KEY", "JWT_SECRET"]
+        required_vars = ["OPENAI_API_KEY", "PINECONE_API_KEY"]
         for var in required_vars:
             if not os.environ.get(var):
                 print(f"[CRITICAL] Missing mandatory environment variable: {var}")
+        if not any(
+            [
+                os.environ.get("JWT_PUBLIC_KEY"),
+                os.environ.get("JWT_PUBLIC_KEY_FILE"),
+            ]
+        ):
+            print("[CRITICAL] Missing JWT verification configuration: set JWT_PUBLIC_KEY/JWT_PUBLIC_KEY_FILE for RS256")
     
     uvicorn.run(app, host=host, port=port)

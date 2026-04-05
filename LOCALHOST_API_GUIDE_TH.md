@@ -36,7 +36,11 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 สร้างไฟล์ `.env` ที่ root ของโปรเจกต์:
 
 ```env
-JWT_SECRET=your-local-jwt-secret
+JWT_PUBLIC_KEY=
+JWT_PUBLIC_KEY_V1=
+JWT_PUBLIC_KEY_FILE=
+JWT_AUDIENCE=
+JWT_ISSUER=
 PINECONE_API_KEY=your-pinecone-api-key
 PINECONE_INDEX_NAME=raggy-bot-trl
 OPENAI_API_KEY=your-openai-api-key
@@ -74,17 +78,31 @@ python main.py
 - local default port จริงคือ `8080`
 - ตอน deploy cloud ระบบจะใช้ค่า `PORT` จาก environment แทน
 
-## 7. สร้าง JWT token สำหรับทดสอบ
+## 7. ใช้ JWT token สำหรับทดสอบ
 
 API นี้ต้องส่ง `Authorization: Bearer <token>` ทุกครั้ง
 
-ตัวอย่างสร้าง token ใน PowerShell:
+ถ้า JWT จาก `trl-backend` มี claim `aud` หรือ `iss` และคุณต้องการให้ API ตรวจค่าเหล่านี้ด้วย ให้ตั้งค่า:
+- `JWT_AUDIENCE` ให้ตรงกับค่า `aud`
+- `JWT_ISSUER` ให้ตรงกับค่า `iss`
 
-```powershell
-python -c "import os,jwt; print(jwt.encode({'user_id':'LOCAL-TEST','role':'admin'}, os.environ['JWT_SECRET'], algorithm='HS256'))"
+ถ้าไม่ได้ตั้งค่า `JWT_AUDIENCE` ระบบจะยังรับ token ที่มี `aud` ได้อยู่ แต่จะไม่บังคับตรวจความตรงกันของ audience ในโหมด local
+
+โปรเจ็กต์นี้รองรับ `RS256` เท่านั้น:
+- ให้นำ token จริงจาก `trl-backend` login flow มาใช้
+- ให้ใส่ RSA public key ลงใน `JWT_PUBLIC_KEY`
+- ถ้ามี `kid` ใน header เช่น `kid: "v1"` สามารถใส่ key เฉพาะตัวนั้นใน `JWT_PUBLIC_KEY_V1` ได้
+- หรือจะเก็บ public key ไว้ในไฟล์ PEM แล้วตั้ง `JWT_PUBLIC_KEY_FILE` แทนก็ได้
+
+ตัวอย่าง:
+
+```env
+JWT_PUBLIC_KEY_V1="-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQE...
+-----END PUBLIC KEY-----"
+JWT_AUDIENCE=trl-frontend
+JWT_ISSUER=trl-backend
 ```
-
-ถ้าต้องการ role ผู้ใช้ทั่วไป ให้เปลี่ยน `role` เป็น `researcher`
 
 เก็บ token ไว้ในตัวแปร:
 
@@ -190,6 +208,5 @@ python -m venv .venv
 pip install -r requirements.txt
 python reindex.py
 python main.py
-python -c "import os,jwt; print(jwt.encode({'user_id':'LOCAL-TEST','role':'admin'}, os.environ['JWT_SECRET'], algorithm='HS256'))"
 .\run_tests.bat
 ```

@@ -3,12 +3,11 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 # Add root directory to python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-# Set test environment vars before importing app
-os.environ["JWT_SECRET"] = "test_secret_key"
 
 try:
     from main import app
@@ -19,9 +18,36 @@ except ImportError:
     client = None
     jwt = None
 
+def generate_rsa_keypair() -> tuple[str, str]:
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8")
+    public_pem = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
+    return private_pem, public_pem
+
+
+def create_rs256_token(payload: dict, private_key: str, kid: str = "v1") -> str:
+    return jwt.encode(payload, private_key, algorithm="RS256", headers={"kid": kid, "typ": "JWT"})
+
+
+TEST_PRIVATE_KEY, TEST_PUBLIC_KEY = generate_rsa_keypair()
+
+
 def create_mock_token(payload: dict) -> str:
-    """Helper to generate symmetric PyJWT tokens mapped to the test secret"""
-    return jwt.encode(payload, os.environ["JWT_SECRET"], algorithm="HS256")
+    """Helper to generate RS256 tokens mapped to the test public key."""
+    merged_payload = {
+        "iss": "trl-research",
+        "aud": "trl-client",
+        "exp": 2085343600,
+        **payload,
+    }
+    return create_rs256_token(merged_payload, private_key=TEST_PRIVATE_KEY, kid="v1")
 
 
 def test_cors_headers_whitelisted():
@@ -64,7 +90,8 @@ def test_raggy_trl_valid_admin_token():
     headers = {"Authorization": f"Bearer {token}"}
     
     # Mocking dependencies by patching WHERE they are used
-    with patch("main.get_retriever") as MockGetRetriever, \
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_retriever") as MockGetRetriever, \
          patch("main.ChatOpenAI") as MockChatOpenAI, \
          patch("main.create_retrieval_chain") as MockChainFactory:
         
@@ -91,6 +118,183 @@ def test_raggy_trl_valid_admin_token():
         assert data["answer_markdown"].startswith("## TRL Response")
         assert "[Mock Admin Data Access]" in data["answer_markdown"]
 
+
+def test_raggy_trl_accepts_backend_style_jwt_claims_with_audience():
+    """Token from trl-backend may include aud/iss/iat/nbf/exp and custom identity fields."""
+    assert client is not None, "API not implemented yet (RED PHASE)"
+
+    token = create_mock_token(
+        {
+            "user_id": "backend-user-001",
+            "user_email": "backend@example.com",
+            "role": "admin",
+            "client_id": "",
+            "client_name": "",
+            "is_temp": False,
+            "iss": "trl-backend",
+            "aud": "trl-frontend",
+            "iat": 1775340000,
+            "nbf": 1775340000,
+            "exp": 2085343600,
+        }
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    mock_store = MagicMock()
+
+    with patch.dict(
+        os.environ,
+        {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY, "JWT_AUDIENCE": "trl-frontend", "JWT_ISSUER": "trl-backend"},
+        clear=False,
+    ), \
+         patch("main.get_retriever") as MockGetRetriever, \
+         patch("main.ChatOpenAI") as MockChatOpenAI, \
+         patch("main.create_stuff_documents_chain") as MockStuffChain, \
+         patch("main.create_retrieval_chain") as MockChainFactory, \
+         patch("main.get_metadata_store", return_value=mock_store):
+        MockGetRetriever.return_value = MagicMock()
+        MockChatOpenAI.return_value = MagicMock()
+        MockStuffChain.return_value = MagicMock()
+
+        mock_chain = MagicMock()
+        mock_chain.invoke.return_value = {"answer": "Accepted backend token."}
+        MockChainFactory.return_value = mock_chain
+
+        response = client.post("/raggy/trl", headers=headers, json={"query": "What is TRL 4?"})
+
+    assert response.status_code == 200
+    saved_record = mock_store.save_record.call_args.args[0]
+    assert saved_record["user_id"] == "backend-user-001"
+    assert saved_record["role"] == "admin"
+
+
+def test_raggy_trl_rejects_wrong_audience_when_configured():
+    """If JWT_AUDIENCE is configured, aud must match."""
+    assert client is not None, "API not implemented yet (RED PHASE)"
+
+    token = create_mock_token(
+        {
+            "user_id": "backend-user-001",
+            "role": "researcher",
+            "aud": "wrong-frontend",
+            "exp": 2085343600,
+        }
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY, "JWT_AUDIENCE": "trl-frontend"}, clear=False):
+        response = client.post("/raggy/trl", headers=headers, json={"query": "What is TRL 4?"})
+
+    assert response.status_code == 200
+    expected_answer = "## TRL Response\n\nI apologize, but I couldn't securely verify your access session. Could you please try logging in again?"
+    assert response.json() == {"answer_markdown": expected_answer}
+
+
+def test_raggy_trl_accepts_rs256_backend_token_with_kid_specific_public_key():
+    assert client is not None, "API not implemented yet (RED PHASE)"
+
+    token = create_rs256_token(
+        {
+            "user_id": "backend-rs-user-001",
+            "user_email": "backend@example.com",
+            "role": "admin",
+            "client_id": "",
+            "client_name": "",
+            "is_temp": False,
+            "iss": "trl-backend",
+            "aud": "trl-frontend",
+            "iat": 1775340000,
+            "nbf": 1775340000,
+            "exp": 2085343600,
+        },
+        private_key=TEST_PRIVATE_KEY,
+        kid="v1",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    mock_store = MagicMock()
+
+    with patch.dict(
+        os.environ,
+        {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY, "JWT_AUDIENCE": "trl-frontend", "JWT_ISSUER": "trl-backend"},
+        clear=False,
+    ), \
+         patch("main.get_retriever") as MockGetRetriever, \
+         patch("main.ChatOpenAI") as MockChatOpenAI, \
+         patch("main.create_stuff_documents_chain") as MockStuffChain, \
+         patch("main.create_retrieval_chain") as MockChainFactory, \
+         patch("main.get_metadata_store", return_value=mock_store):
+        MockGetRetriever.return_value = MagicMock()
+        MockChatOpenAI.return_value = MagicMock()
+        MockStuffChain.return_value = MagicMock()
+
+        mock_chain = MagicMock()
+        mock_chain.invoke.return_value = {"answer": "Accepted RS256 backend token."}
+        MockChainFactory.return_value = mock_chain
+
+        response = client.post("/raggy/trl", headers=headers, json={"query": "What is TRL 4?"})
+
+    assert response.status_code == 200
+    saved_record = mock_store.save_record.call_args.args[0]
+    assert saved_record["user_id"] == "backend-rs-user-001"
+    assert saved_record["role"] == "admin"
+
+
+def test_raggy_trl_rejects_rs256_token_when_public_key_is_missing():
+    assert client is not None, "API not implemented yet (RED PHASE)"
+
+    token = create_rs256_token(
+        {"user_id": "backend-rs-user-001", "role": "researcher", "exp": 2085343600},
+        private_key=TEST_PRIVATE_KEY,
+        kid="v1",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": "", "JWT_PUBLIC_KEY": ""}, clear=False):
+        response = client.post("/raggy/trl", headers=headers, json={"query": "What is TRL 4?"})
+
+    assert response.status_code == 200
+    expected_answer = "## TRL Response\n\nI apologize, but I couldn't securely verify your access session. Could you please try logging in again?"
+    assert response.json() == {"answer_markdown": expected_answer}
+
+
+def test_raggy_trl_accepts_base64_encoded_public_key_from_env():
+    assert client is not None, "API not implemented yet (RED PHASE)"
+
+    import base64
+
+    token = create_rs256_token(
+        {"user_id": "backend-rs-user-002", "role": "admin", "iss": "trl-backend", "aud": "trl-frontend", "exp": 2085343600},
+        private_key=TEST_PRIVATE_KEY,
+        kid="v1",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    mock_store = MagicMock()
+    encoded_public_key = base64.b64encode(TEST_PUBLIC_KEY.encode("utf-8")).decode("utf-8")
+
+    with patch.dict(
+        os.environ,
+        {"JWT_PUBLIC_KEY_V1": encoded_public_key, "JWT_AUDIENCE": "trl-frontend", "JWT_ISSUER": "trl-backend"},
+        clear=False,
+    ), \
+         patch("main.get_retriever") as MockGetRetriever, \
+         patch("main.ChatOpenAI") as MockChatOpenAI, \
+         patch("main.create_stuff_documents_chain") as MockStuffChain, \
+         patch("main.create_retrieval_chain") as MockChainFactory, \
+         patch("main.get_metadata_store", return_value=mock_store):
+        MockGetRetriever.return_value = MagicMock()
+        MockChatOpenAI.return_value = MagicMock()
+        MockStuffChain.return_value = MagicMock()
+
+        mock_chain = MagicMock()
+        mock_chain.invoke.return_value = {"answer": "Accepted base64 public key."}
+        MockChainFactory.return_value = mock_chain
+
+        response = client.post("/raggy/trl", headers=headers, json={"query": "What is TRL 4?"})
+
+    assert response.status_code == 200
+    saved_record = mock_store.save_record.call_args.args[0]
+    assert saved_record["user_id"] == "backend-rs-user-002"
+
+
 def test_raggy_trl_missing_role_downgrades_to_researcher():
     """Test that a valid token WITHOUT a role securely defaults to 'researcher'."""
     assert client is not None, "API not implemented yet (RED PHASE)"
@@ -100,7 +304,8 @@ def test_raggy_trl_missing_role_downgrades_to_researcher():
     headers = {"Authorization": f"Bearer {token}"}
     
     # Mocking dependencies
-    with patch("main.get_retriever") as MockGetRetriever, \
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_retriever") as MockGetRetriever, \
          patch("main.ChatOpenAI") as MockChatOpenAI, \
          patch("main.create_retrieval_chain") as MockChainFactory:
         
@@ -130,7 +335,8 @@ def test_invalid_input_returns_polite_response():
     headers = {"Authorization": f"Bearer {token}"}
     
     # Send empty json which fails the QueryRequest validation
-    response = client.post("/raggy/trl", headers=headers, json={})
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False):
+        response = client.post("/raggy/trl", headers=headers, json={})
     assert response.status_code == 200
     expected_answer = "## TRL Response\n\nI'm sorry, but I am currently only equipped to answer text-based questions. Please type out your question and I would be happy to help!"
     assert response.json() == {"answer_markdown": expected_answer}
@@ -145,7 +351,8 @@ def test_successful_request_persists_safe_metadata_and_returns_request_id_header
     }
     mock_store = MagicMock()
 
-    with patch("main.get_retriever") as MockGetRetriever, \
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_retriever") as MockGetRetriever, \
          patch("main.ChatOpenAI") as MockChatOpenAI, \
          patch("main.create_stuff_documents_chain") as MockStuffChain, \
          patch("main.create_retrieval_chain") as MockChainFactory, \
@@ -181,7 +388,8 @@ def test_metadata_write_failure_does_not_break_successful_response():
     mock_store = MagicMock()
     mock_store.save_record.side_effect = RuntimeError("firestore unavailable")
 
-    with patch("main.get_retriever") as MockGetRetriever, \
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_retriever") as MockGetRetriever, \
          patch("main.ChatOpenAI") as MockChatOpenAI, \
          patch("main.create_stuff_documents_chain") as MockStuffChain, \
          patch("main.create_retrieval_chain") as MockChainFactory, \
@@ -205,7 +413,8 @@ def test_internal_metadata_session_endpoint_requires_admin_role():
     token = create_mock_token({"role": "researcher", "sub": "user-123"})
     headers = {"Authorization": f"Bearer {token}"}
 
-    response = client.get("/internal/metadata/sessions/sess-123", headers=headers)
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False):
+        response = client.get("/internal/metadata/sessions/sess-123", headers=headers)
 
     assert response.status_code == 403
 
@@ -227,7 +436,8 @@ def test_internal_metadata_session_endpoint_returns_records_for_admin():
         }
     ]
 
-    with patch("main.get_metadata_store", return_value=mock_store):
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_metadata_store", return_value=mock_store):
         response = client.get("/internal/metadata/sessions/sess-123", headers=headers)
 
     assert response.status_code == 200
@@ -251,7 +461,8 @@ def test_internal_metadata_recent_endpoint_returns_recent_records_for_admin():
         }
     ]
 
-    with patch("main.get_metadata_store", return_value=mock_store):
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_metadata_store", return_value=mock_store):
         response = client.get("/internal/metadata/requests?limit=5", headers=headers)
 
     assert response.status_code == 200

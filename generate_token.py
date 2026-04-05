@@ -1,11 +1,2 @@
-import jwt
-
-jwt_secret = "raggy-secret-2026"
-
-payload = {
-    "user_id": "TEST-001",
-    "role": "admin"
-}
-
-token = jwt.encode(payload, jwt_secret, algorithm="HS256")
-print(token)
+print("Use a real RS256 token from trl-backend login flow for this project.")
+print("Local helper generation with HS256 has been removed because the API now accepts RS256 only.")

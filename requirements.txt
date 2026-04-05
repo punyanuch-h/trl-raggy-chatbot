@@ -8,6 +8,7 @@ langchain-pinecone
 pinecone-client
 openai
 PyJWT
+cryptography
 pypdf
 python-dotenv
 httpx
