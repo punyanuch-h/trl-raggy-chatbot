@@ -1,74 +1,93 @@
-# Technical Requirements Specification: Raggy Bot (Version 3)
+# Technical Requirements Specification: Raggy Bot (Current Product State)
 
-## 1. Core Architecture Stack
-* **Operating Language**: Python
-* **Web Framework**: FastAPI
-* **LLM Provider**: OpenAI
-* **Vector Database**: Pinecone (Serverless Cloud DB)
-  * *Dimensions Rule*: Pinecone must be configured for `1536`-dimension vectors to align with the embedding model
-* **Embedding Model**: OpenAI `text-embedding-3-small`
-* **Orchestration Library**: LangChain
-* **Testing Suite**: `pytest`
+## 1. Core Stack
+- **Language**: Python
+- **Web Framework**: FastAPI
+- **LLM Provider**: OpenAI
+- **Vector Store**: Pinecone
+- **Embedding Model**: OpenAI `text-embedding-3-small`
+- **Orchestration Layer**: LangChain plus local deterministic orchestration modules
+- **Test Framework**: `pytest`
 
-## 2. API Security, CORS, and Runtime
-* **API Execution**: The Uvicorn ASGI server runs as the FastAPI host process. The local default port is `8080`. Cloud execution uses the `PORT` environment variable.
-* **CORS Configuration**: The API explicitly allows browser requests from `http://localhost:3000`.
-* **Endpoint Route**: The system exposes one conversational endpoint at `POST /raggy/trl`.
-* **API JWT Handling**:
-  * Clients must send `Authorization: Bearer <token>`
-  * The API verifies the token with `JWT_SECRET`
-  * If `role` is missing or malformed, access safely downgrades to `researcher`
+## 2. Runtime and Security
+- The service runs on local port `8080` by default and uses `PORT` in cloud environments.
+- Browser access is currently whitelisted for `http://localhost:3000`.
+- Clients must send `Authorization: Bearer <token>`.
+- JWT verification must use `RS256`.
+- Public key material may be loaded from:
+  - `JWT_PUBLIC_KEY`
+  - `JWT_PUBLIC_KEY_<KID>`
+  - `JWT_PUBLIC_KEY_FILE`
+- Optional audience and issuer validation may use:
+  - `JWT_AUDIENCE`
+  - `JWT_ISSUER`
+- Missing or malformed `role` claims must safely downgrade to `researcher`.
 
-## 3. Request and Response Contract
-* **Input Contract**: The endpoint accepts a JSON body with a single `query` string
-* **Primary Response Contract**: The endpoint returns a JSON object containing:
-  * `answer_markdown` as the canonical markdown response field
-* **API Clarity Rule**: The contract uses a single answer field because there is no confirmed production frontend or external consumer that requires backward compatibility with an older plain-text field
-* **Formatting Rule**: `answer_markdown` must remain safe for frontend markdown rendering
+## 3. Endpoint Contract
+- **Primary Route**: `POST /raggy/trl`
+- **Request Body**:
+  - `query: string`
+  - `session_id: optional string`
+  - `candidate_level: optional integer`
+- **Canonical Response Field**: `answer_markdown`
+- **QA Response Mode**: includes `mode: "qa"`
+- **Assessment Response Mode**: may include:
+  - `session_id`
+  - `mode: "assessment"`
+  - `assessment_result`
+  - `missing_evidence`
+  - `next_question`
 
-## 4. Safe Request Exception Engine
-* **Graceful Exception Constraint**: Validation, authentication, and internal failures must return polite conversational payloads instead of raw framework errors
-* **Response Shape Consistency**:
-  * *Input Example Response Shape*: `{"answer_markdown": "..."}`
-  * *Security Error Example Response Shape*: `{"answer_markdown": "..."}`
+## 4. QA and Assessment Behavior
+- General QA must use RAG-grounded answering and Thai-first response behavior.
+- Assessment flow must use deterministic rule evaluation as the final authority.
+- Assessment interpretation may infer structured evidence, but must not assign the final TRL directly.
+- Assessment sessions must support multi-turn progression through a session-aware state store.
 
-## 5. LLM Generation Directives
-* **Prompt Engineering Structure**: The system prompt must enforce a polite, supportive, professional tone suitable for healthcare and education contexts
-* **Markdown Safety Rule**: The model output must use only safe markdown constructs suitable for frontend rendering
-  * Allowed structures: one level-2 heading, short paragraphs, and hyphen bullet lists
-  * Disallowed structures: raw HTML, tables, code fences, numbered lists, and deep heading levels
+## 5. Structured Rule Requirements
+- The rule base must support TRL levels 1 through 9.
+- Each level must support:
+  - `required_evidence`
+  - `optional_evidence`
+  - `domain_notes`
+  - `follow_up_questions`
+  - `source_references`
+- Rule loading must be validated before runtime use.
 
-## 6. Data Pipeline and Privacy Control
-* **Document Ingestion**:
-  * `source/` contains general documents
-  * `source/private/` contains restricted documents
-* **Filter Logic**:
-  * Private documents must be tagged for admin-only access
-  * `researcher` retrieval must exclude restricted chunks before context reaches the LLM
+## 6. Graceful Failure Design
+- Validation and auth failures must return polite conversational payloads.
+- Router failures must fall back safely to QA handling.
+- QA orchestration failures should still return a retrieved answer when available.
+- Assessment workflow failures should return an assessment technical fallback instead of raw server errors.
+- Metadata write failures must not block the primary API response.
 
-## 7. Evaluation and TDD Directives
-* **Deterministic Elements**: PDF extraction, JWT decoding, JSON serialization, CORS checks, response formatting, and prompt constraints must be covered by `pytest`
-* **Non-Deterministic Outcomes**: Generated answers should be evaluated for faithfulness, relevance, politeness, and output structure consistency
+## 7. Metadata Controls
+- Metadata storage is audit-only and must exclude transcript content.
+- Approved stored fields:
+  - `request_id`
+  - `session_id`
+  - `user_id`
+  - `role`
+  - `timestamp`
+  - `response_status`
+  - `route_path`
+  - `model_name`
+  - `workflow_mode`
+  - `decision_status`
+- Excluded fields:
+  - `query`
+  - `answer`
+  - `answer_markdown`
+  - retrieved context
+  - prompt content
 
-## 8. Metadata Persistence Controls
-* **Phase 1 Storage Scope**: The system may persist request metadata for operational audit and monitoring, but it must not persist transcript content
-* **Approved Metadata Fields**:
-  * `request_id`
-  * `session_id` when provided
-  * `user_id` derived from JWT `sub` or stable user claim
-  * `role`
-  * `timestamp`
-  * `response_status`
-  * `route_path`
-  * `model_name`
-* **Explicitly Excluded Fields**:
-  * `query`
-  * `answer`
-  * `answer_markdown`
-  * retrieved context or prompt content
-* **Storage Backend**: Firestore is the preferred metadata backend for Phase 1 because it supports low-volume per-request writes, simple operational queries, and free-tier alignment for an internal user base of about 100 users
-* **Operational Review Path**: Internal inspection access is admin-only and limited to metadata list and read-by-session workflows
-* **Budget and Retention Guidance**:
-  * Keep metadata in a dedicated collection, default `request_metadata`
-  * Apply time-bounded retention, recommended 30 to 90 days depending on governance approval
-  * Grant the Cloud Run service account only the minimum Firestore document read/write permissions required for this collection
+## 8. Test Coverage Expectations
+- Automated tests must cover:
+  - auth behavior
+  - metadata persistence safety
+  - intent routing
+  - QA and assessment API contracts
+  - evaluator and rules validation
+  - source audit behavior
+  - conversational assessment flow
+  - failure-path hardening

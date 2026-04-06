@@ -142,6 +142,34 @@
   },
   "components": {
     "schemas": {
+      "AssessmentResultPayload": {
+        "properties": {
+          "candidate_level": {
+            "type": "integer",
+            "title": "Candidate Level"
+          },
+          "matched_level": {
+            "type": "integer",
+            "title": "Matched Level"
+          },
+          "decision_status": {
+            "type": "string",
+            "title": "Decision Status"
+          },
+          "reasoning_summary": {
+            "type": "string",
+            "title": "Reasoning Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "candidate_level",
+          "matched_level",
+          "decision_status",
+          "reasoning_summary"
+        ],
+        "title": "AssessmentResultPayload"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -195,6 +223,28 @@
           "model_name": {
             "type": "string",
             "title": "Model Name"
+          },
+          "workflow_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Mode"
+          },
+          "decision_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Status"
           }
         },
         "type": "object",
@@ -230,6 +280,28 @@
           "query": {
             "type": "string",
             "title": "Query"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "candidate_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Level"
           }
         },
         "type": "object",
@@ -243,6 +315,66 @@
           "answer_markdown": {
             "type": "string",
             "title": "Answer Markdown"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "assessment_result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentResultPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "missing_evidence": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Evidence"
+          },
+          "next_question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Question"
           }
         },
         "type": "object",

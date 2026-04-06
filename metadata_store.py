@@ -28,6 +28,8 @@ def build_metadata_record(
     response_status: str = "success",
     model_name: str = DEFAULT_MODEL_NAME,
     timestamp: Optional[datetime] = None,
+    workflow_mode: Optional[str] = None,
+    decision_status: Optional[str] = None,
 ) -> dict[str, Any]:
     record = {
         "request_id": request_id or generate_request_id(),
@@ -38,6 +40,8 @@ def build_metadata_record(
         "response_status": response_status,
         "route_path": route_path,
         "model_name": model_name,
+        "workflow_mode": workflow_mode,
+        "decision_status": decision_status,
     }
 
     for field in EXCLUDED_CONTENT_FIELDS:

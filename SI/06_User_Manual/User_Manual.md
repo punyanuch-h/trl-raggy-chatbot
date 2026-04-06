@@ -1,63 +1,105 @@
-# Raggy Bot: User Manual (TRL Expert)
+# Raggy Bot User Manual
 
-## 1. Introduction
-Raggy Bot is a professional AI assistant for Technology Readiness Level (TRL) questions in healthcare and education contexts. It uses Retrieval-Augmented Generation (RAG) so answers stay grounded in project documents.
+## 1. Purpose
+Raggy Bot is a Thai-first API for Technology Readiness Level work. It supports:
+- TRL question answering from indexed documents
+- multi-turn TRL assessment with deterministic rule evaluation
 
-## 2. Getting Started
-### Prerequisites
-- A valid JWT with a `role` claim of `admin` or `researcher`
-- The deployed API URL, or `http://127.0.0.1:8080` for local use
+## 2. Prerequisites
+- a valid JWT bearer token
+- access to the deployed API URL or local URL `http://127.0.0.1:8080`
 
-## 3. Using the API
-### Endpoint
-`POST /raggy/trl`
+## 3. Main Endpoint
+- `POST /raggy/trl`
 
-### Request headers
+## 4. Request Headers
 - `Content-Type: application/json`
 - `Authorization: Bearer <your_jwt_token>`
-- Optional: `X-Request-ID: <client_correlation_id>`
-- Optional: `X-Session-ID: <session_group_id>`
+- optional `X-Request-ID`
+- optional `X-Session-ID`
 
-### Request body
+## 5. Request Body
 ```json
 {
-  "query": "What are the characteristics of TRL 4 in a laboratory environment?"
+  "query": "ช่วยประเมิน TRL ให้หน่อย ตอนนี้มีผลทดสอบในสภาพแวดล้อมที่เกี่ยวข้องแล้ว",
+  "session_id": "sess_optional_001",
+  "candidate_level": 5
 }
 ```
 
-### Response body
+## 6. Response Shapes
+General QA example:
 ```json
 {
-  "answer_markdown": "## TRL Response\n\nTRL 4 focuses on component validation in a laboratory environment."
+  "answer_markdown": "## คำตอบ TRL\n\nTRL 4 คือการทดสอบต้นแบบในห้องปฏิบัติการ",
+  "mode": "qa"
 }
 ```
 
-## 4. Understanding the Markdown Output
-- `answer_markdown` is the only response field returned by the endpoint.
-- It is the canonical presentation format for clients and should be rendered as markdown.
-- The backend constrains output to safe markdown patterns: one level-2 heading, short paragraphs, and simple hyphen bullets.
-- Raw HTML, tables, code fences, and deep heading hierarchies are intentionally out of scope.
+Assessment example:
+```json
+{
+  "answer_markdown": "## ผลการประเมิน TRL\n\nผลการประเมิน TRL เบื้องต้น...",
+  "session_id": "sess_optional_001",
+  "mode": "assessment",
+  "assessment_result": {
+    "candidate_level": 5,
+    "matched_level": 4,
+    "decision_status": "needs_more_evidence",
+    "reasoning_summary": "หลักฐานของ TRL 5 ยังไม่ครบ"
+  },
+  "missing_evidence": [
+    {
+      "id": "trl_5_supporting_performance_data",
+      "description_th": "มีข้อมูลสมรรถนะหรือความปลอดภัยที่รองรับผลการทดสอบ"
+    }
+  ],
+  "next_question": "มีข้อมูลด้านประสิทธิภาพหรือความปลอดภัยที่รองรับผลการทดสอบระดับนี้อย่างไร?"
+}
+```
 
-## 5. Understanding Roles & Access
-Raggy Bot enforces Role-Based Access Control (RBAC):
-- `admin` can access public and private TRL documents, including content from `source/private/`
-- `researcher` can access only public/general TRL documents
+## 7. How To Use Each Mode
+- **QA mode**
+  - ask TRL concepts, differences, or explanations
+  - the response returns `mode: "qa"`
+- **Assessment mode**
+  - provide evidence about the project state
+  - keep sending follow-up answers with the same `session_id`
+  - the response may include `next_question` until the system can confirm or downgrade the level
 
-## 6. Tone and Constraints
-- The bot uses a polite, professional, and supportive tone
-- The bot answers only from the indexed PDF documentation
-- If the context is insufficient, the bot declines to guess
-- If the question is off-topic, the bot redirects the user back to TRL-related questions
+## 8. Understanding Key Fields
+- `answer_markdown`
+  - canonical display field for frontend rendering
+- `mode`
+  - tells whether the response came from QA or assessment flow
+- `assessment_result`
+  - contains `candidate_level`, `matched_level`, `decision_status`, and `reasoning_summary`
+- `missing_evidence`
+  - shows which evidence items are still not supported
+- `next_question`
+  - tells the user what evidence to provide next
 
-## 7. Troubleshooting
-- If the response asks you to log in again, the JWT is missing, invalid, or expired
-- If the response mentions a technical difficulty, the API could not complete retrieval or LLM processing
-- If the response format looks unexpected, check the current OpenAPI contract in `SI/02_Software_Design/openapi.json`
+## 9. Roles and Access
+- `researcher`
+  - can use public TRL sources only
+- `admin`
+  - can use public and restricted sources
+  - can access internal metadata review endpoints
 
-## 8. Metadata Audit Review
-Sprint 7 stores metadata only for monitoring and audit support. It does not store conversation transcript content.
+## 10. Troubleshooting
+- If the response asks you to log in again:
+  - the JWT is missing, invalid, or expired
+- If the response says there is a technical issue:
+  - the API could not complete the workflow and returned a safe fallback
+- If the assessment response contains `next_question`:
+  - continue with the same `session_id`
+- If the assessment result seems lower than expected:
+  - review `missing_evidence` and provide the requested proof
 
-Stored metadata fields:
+## 11. Metadata Review
+The system stores metadata only for audit and troubleshooting. It does not store transcript content in the metadata records.
+
+Stored fields:
 - `request_id`
 - `session_id`
 - `user_id`
@@ -66,13 +108,9 @@ Stored metadata fields:
 - `response_status`
 - `route_path`
 - `model_name`
+- `workflow_mode`
+- `decision_status`
 
-Excluded fields:
-- `query`
-- `answer`
-- `answer_markdown`
-- retrieved context
-
-Admin-only internal verification endpoints:
+Admin-only internal endpoints:
 - `GET /internal/metadata/requests?limit=20`
 - `GET /internal/metadata/sessions/{session_id}`

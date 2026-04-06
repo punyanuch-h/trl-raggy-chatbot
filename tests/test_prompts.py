@@ -33,7 +33,7 @@ def test_prompt_enforces_politeness_and_tone():
     # Convert to string to check for keywords in the system message
     prompt_str = str(prompt)
     
-    polite_keywords = ["polite", "empathetic", "professional", "healthcare", "education"]
+    polite_keywords = ["thai", "polite", "empathetic", "professional", "trl"]
     for word in polite_keywords:
         assert word in prompt_str.lower(), f"Prompt missing tone keyword: {word}"
 
@@ -49,8 +49,9 @@ def test_prompt_has_redirect_instruction_for_off_topic():
     
     # Check for instructions to stay in context or decline
     assert "only" in prompt_str and "context" in prompt_str
-    assert "sorry" in prompt_str or "apologize" in prompt_str
-    assert "information" in prompt_str
+    assert "thai" in prompt_str
+    assert "off-topic" in prompt_str
+    assert "trl" in prompt_str
 
 
 def test_prompt_includes_markdown_safety_rules():

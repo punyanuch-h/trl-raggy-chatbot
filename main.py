@@ -24,6 +24,12 @@ from rag_retriever import get_retriever
 from rag_prompts import get_trl_prompt
 from response_formatter import format_answer_markdown
 from metadata_store import DEFAULT_MODEL_NAME, build_metadata_record, generate_request_id, get_metadata_store_from_env
+from assessment.response_templates import get_response_message, get_response_title
+from assessment.conversation import run_assessment_turn
+from assessment.session_state import InMemoryAssessmentSessionStore, generate_session_id
+from agents.intent_router import IntentDecision, route_trl_intent
+from agents.orchestrator import orchestrate_query
+from agents.qa_agent import answer_general_qa
 
 app = FastAPI(
     title="Raggy Bot API",
@@ -45,11 +51,32 @@ app.add_middleware(
 )
 
 
-def build_query_response(answer_text: str) -> dict:
+def build_query_response(answer_text: str, mode: str = "qa") -> dict:
     """Return the canonical markdown response payload."""
     return {
-        "answer_markdown": format_answer_markdown(answer_text),
+        "answer_markdown": format_answer_markdown(answer_text, title=get_response_title(mode)),
     }
+
+
+def safe_route_trl_intent(query: str) -> IntentDecision:
+    """Prefer a safe QA fallback if the router cannot classify the request."""
+    try:
+        return route_trl_intent(query)
+    except Exception as router_error:
+        print(f"[WARN] Intent routing failed: {router_error}")
+        return IntentDecision(
+            intent="general_qa",
+            needs_clarification=False,
+            rationale="router_fallback_after_error",
+        )
+
+
+def build_safe_qa_answer(query: str, rag_answer: str | None, prefer_technical_error: bool = False) -> str:
+    """Keep QA responses usable even when retrieval or orchestration is degraded."""
+    qa_response = answer_general_qa(query=query, rag_answer=rag_answer)
+    if qa_response.source == "qa_fallback" and prefer_technical_error:
+        return get_response_message("technical_error", mode="qa")
+    return qa_response.answer_text
 
 # -------------------------------------------------------------
 # EXCEPTION ENGINE: Polite Error Handling System (Ticket 3)
@@ -63,7 +90,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=200,
         content=build_query_response(
-            "I'm sorry, but I am currently only equipped to answer text-based questions. Please type out your question and I would be happy to help!"
+            get_response_message("validation_error", mode="qa")
         ),
     )
 
@@ -77,7 +104,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         return JSONResponse(
             status_code=200,
             content=build_query_response(
-                "I apologize, but I couldn't securely verify your access session. Could you please try logging in again?"
+                get_response_message("auth_error", mode="qa")
             ),
         )
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
@@ -192,9 +219,23 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
 # -------------------------------------------------------------
 class QueryRequest(BaseModel):
     query: str
+    session_id: str | None = None
+    candidate_level: int | None = None
+
+class AssessmentResultPayload(BaseModel):
+    candidate_level: int
+    matched_level: int
+    decision_status: str
+    reasoning_summary: str
+
 
 class QueryResponse(BaseModel):
     answer_markdown: str
+    session_id: str | None = None
+    mode: str | None = None
+    assessment_result: AssessmentResultPayload | None = None
+    missing_evidence: list[dict[str, str]] | None = None
+    next_question: str | None = None
 
 class MetadataRecord(BaseModel):
     request_id: str
@@ -205,6 +246,8 @@ class MetadataRecord(BaseModel):
     response_status: str
     route_path: str
     model_name: str
+    workflow_mode: str | None = None
+    decision_status: str | None = None
 
 
 class MetadataRecordListResponse(BaseModel):
@@ -215,13 +258,20 @@ def get_metadata_store():
     return get_metadata_store_from_env()
 
 
+ASSESSMENT_SESSION_STORE = InMemoryAssessmentSessionStore()
+
+
+def get_assessment_session_store() -> InMemoryAssessmentSessionStore:
+    return ASSESSMENT_SESSION_STORE
+
+
 def require_admin_user(user: UserRole) -> UserRole:
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin role required")
     return user
 
 
-@app.post("/raggy/trl", response_model=QueryResponse)
+@app.post("/raggy/trl", response_model=QueryResponse, response_model_exclude_none=True)
 async def process_trl_query(
     request: QueryRequest,
     response: Response,
@@ -234,24 +284,91 @@ async def process_trl_query(
     """
     try:
         request_id = http_request.headers.get("X-Request-ID") or generate_request_id()
-        session_id = http_request.headers.get("X-Session-ID")
+        session_id = request.session_id or http_request.headers.get("X-Session-ID")
         response.headers["X-Request-ID"] = request_id
 
-        # 1. Initialize the components
-        llm = ChatOpenAI(
-            model=DEFAULT_MODEL_NAME,
-            temperature=0,
-            base_url=os.environ.get("OPENAI_BASE_URL")
-        )
-        retriever = get_retriever(role=user.role)
-        prompt = get_trl_prompt()
+        assessment_session_store = get_assessment_session_store()
+        decision = safe_route_trl_intent(request.query)
+        existing_assessment_session = assessment_session_store.get(session_id) if session_id else None
+        if decision.intent == "trl_assessment" or existing_assessment_session is not None:
+            try:
+                active_session_id = session_id or generate_session_id()
+                assessment_turn = run_assessment_turn(
+                    request.query,
+                    session_id=active_session_id,
+                    store=assessment_session_store,
+                    candidate_level=request.candidate_level,
+                )
+                workflow_mode = "assessment"
+                decision_status = assessment_turn.decision_status
+                response_payload = QueryResponse(
+                    answer_markdown=format_answer_markdown(assessment_turn.answer_text, title=get_response_title("assessment")),
+                    session_id=assessment_turn.session_id,
+                    mode=workflow_mode,
+                    assessment_result=AssessmentResultPayload(
+                        candidate_level=assessment_turn.candidate_level,
+                        matched_level=assessment_turn.matched_level,
+                        decision_status=assessment_turn.decision_status,
+                        reasoning_summary=assessment_turn.reasoning_summary,
+                    ),
+                    missing_evidence=assessment_turn.missing_evidence,
+                    next_question=assessment_turn.next_question,
+                )
+            except Exception as assessment_error:
+                print(f"[WARN] Assessment workflow failed: {assessment_error}")
+                workflow_mode = "assessment"
+                decision_status = "technical_fallback"
+                response_payload = QueryResponse(
+                    answer_markdown=format_answer_markdown(
+                        get_response_message("technical_error", mode="assessment"),
+                        title=get_response_title("assessment"),
+                    ),
+                    session_id=session_id,
+                    mode=workflow_mode,
+                )
+        else:
+            rag_answer = None
+            rag_failed = False
+            try:
+                llm = ChatOpenAI(
+                    model=DEFAULT_MODEL_NAME,
+                    temperature=0,
+                    base_url=os.environ.get("OPENAI_BASE_URL")
+                )
+                retriever = get_retriever(role=user.role)
+                prompt = get_trl_prompt()
 
-        # 2. Build the RAG chain
-        combine_docs_chain = create_stuff_documents_chain(llm, prompt)
-        rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
+                combine_docs_chain = create_stuff_documents_chain(llm, prompt)
+                rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
+                rag_response = rag_chain.invoke({"input": request.query})
+                rag_answer = rag_response.get("answer")
+            except Exception as rag_error:
+                rag_failed = True
+                print(f"[WARN] QA retrieval failed: {rag_error}")
 
-        # 3. Execute the chain
-        rag_response = rag_chain.invoke({"input": request.query})
+            try:
+                workflow_result = orchestrate_query(request.query, rag_answer=rag_answer)
+                workflow_mode = workflow_result.mode
+                decision_status = "clarification_requested" if workflow_result.needs_clarification else "completed"
+                response_payload = QueryResponse(
+                    answer_markdown=format_answer_markdown(workflow_result.answer_text, title=get_response_title(workflow_result.mode)),
+                    mode=workflow_result.mode,
+                )
+            except Exception as orchestration_error:
+                print(f"[WARN] QA orchestration failed: {orchestration_error}")
+                workflow_mode = "qa"
+                decision_status = "technical_fallback" if rag_failed else "completed_with_fallback"
+                fallback_answer = build_safe_qa_answer(
+                    request.query,
+                    rag_answer=rag_answer,
+                    prefer_technical_error=rag_failed,
+                )
+                response_payload = QueryResponse(
+                    answer_markdown=format_answer_markdown(fallback_answer, title=get_response_title("qa")),
+                    mode=workflow_mode,
+                )
+
+        print(f"[ORCHESTRATOR] request_id={request_id} intent={decision.intent} mode={workflow_mode} status={decision_status}")
 
         metadata_store = get_metadata_store()
         if metadata_store:
@@ -262,15 +379,17 @@ async def process_trl_query(
                         role=user.role,
                         route_path=str(http_request.url.path),
                         request_id=request_id,
-                        session_id=session_id,
+                        session_id=response_payload.session_id or session_id,
                         response_status="success",
                         model_name=DEFAULT_MODEL_NAME,
+                        workflow_mode=workflow_mode,
+                        decision_status=decision_status,
                     )
                 )
             except Exception as metadata_error:
                 print(f"[WARN] Metadata persistence failed for {request_id}: {metadata_error}")
 
-        return QueryResponse(**build_query_response(rag_response["answer"]))
+        return response_payload
 
     except Exception as e:
         # Log error for admin oversight
@@ -278,7 +397,7 @@ async def process_trl_query(
         # Return polite apology instead of raw crash (Ticket 3 constraint)
         return QueryResponse(
             **build_query_response(
-                "I'm sorry, I encountered a technical difficulty while processing your request. Please try again in a few moments."
+                get_response_message("technical_error", mode="qa")
             )
         )
 

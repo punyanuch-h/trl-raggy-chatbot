@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from assessment.response_templates import get_response_message
 
 # Add root directory to python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -69,7 +70,7 @@ def test_raggy_trl_endpoint_requires_auth():
     
     response = client.post("/raggy/trl", json={"query": "What is TRL 4?"})
     assert response.status_code == 200
-    expected_answer = "## TRL Response\n\nI apologize, but I couldn't securely verify your access session. Could you please try logging in again?"
+    expected_answer = "## คำตอบ TRL\n\nขออภัย ไม่สามารถยืนยันสิทธิ์การเข้าใช้งานของคุณได้อย่างปลอดภัย กรุณาเข้าสู่ระบบอีกครั้ง"
     assert response.json() == {"answer_markdown": expected_answer}
 
 def test_raggy_trl_endpoint_invalid_token():
@@ -79,7 +80,7 @@ def test_raggy_trl_endpoint_invalid_token():
     headers = {"Authorization": "Bearer fake.token.here"}
     response = client.post("/raggy/trl", headers=headers, json={"query": "What is TRL 4?"})
     assert response.status_code == 200
-    expected_answer = "## TRL Response\n\nI apologize, but I couldn't securely verify your access session. Could you please try logging in again?"
+    expected_answer = "## คำตอบ TRL\n\nขออภัย ไม่สามารถยืนยันสิทธิ์การเข้าใช้งานของคุณได้อย่างปลอดภัย กรุณาเข้าสู่ระบบอีกครั้ง"
     assert response.json() == {"answer_markdown": expected_answer}
 
 def test_raggy_trl_valid_admin_token():
@@ -115,7 +116,7 @@ def test_raggy_trl_valid_admin_token():
         assert response.status_code == 200
         data = response.json()
         assert "answer_markdown" in data
-        assert data["answer_markdown"].startswith("## TRL Response")
+        assert data["answer_markdown"].startswith("## คำตอบ TRL")
         assert "[Mock Admin Data Access]" in data["answer_markdown"]
 
 
@@ -185,7 +186,7 @@ def test_raggy_trl_rejects_wrong_audience_when_configured():
         response = client.post("/raggy/trl", headers=headers, json={"query": "What is TRL 4?"})
 
     assert response.status_code == 200
-    expected_answer = "## TRL Response\n\nI apologize, but I couldn't securely verify your access session. Could you please try logging in again?"
+    expected_answer = "## คำตอบ TRL\n\nขออภัย ไม่สามารถยืนยันสิทธิ์การเข้าใช้งานของคุณได้อย่างปลอดภัย กรุณาเข้าสู่ระบบอีกครั้ง"
     assert response.json() == {"answer_markdown": expected_answer}
 
 
@@ -252,7 +253,7 @@ def test_raggy_trl_rejects_rs256_token_when_public_key_is_missing():
         response = client.post("/raggy/trl", headers=headers, json={"query": "What is TRL 4?"})
 
     assert response.status_code == 200
-    expected_answer = "## TRL Response\n\nI apologize, but I couldn't securely verify your access session. Could you please try logging in again?"
+    expected_answer = "## คำตอบ TRL\n\nขออภัย ไม่สามารถยืนยันสิทธิ์การเข้าใช้งานของคุณได้อย่างปลอดภัย กรุณาเข้าสู่ระบบอีกครั้ง"
     assert response.json() == {"answer_markdown": expected_answer}
 
 
@@ -338,7 +339,7 @@ def test_invalid_input_returns_polite_response():
     with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False):
         response = client.post("/raggy/trl", headers=headers, json={})
     assert response.status_code == 200
-    expected_answer = "## TRL Response\n\nI'm sorry, but I am currently only equipped to answer text-based questions. Please type out your question and I would be happy to help!"
+    expected_answer = "## คำตอบ TRL\n\nขออภัย ขณะนี้ระบบรองรับเฉพาะข้อความสำหรับคำถาม กรุณาพิมพ์คำถามที่ต้องการสอบถามแล้วผมจะช่วยต่อให้ครับ"
     assert response.json() == {"answer_markdown": expected_answer}
 
 
@@ -407,6 +408,142 @@ def test_metadata_write_failure_does_not_break_successful_response():
     assert response.status_code == 200
     assert "answer_markdown" in response.json()
     assert response.headers["x-request-id"]
+
+
+def test_assessment_response_contract_returns_session_and_next_question():
+    token = create_mock_token({"role": "researcher", "sub": "user-123"})
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Session-ID": "sess-assessment-001",
+    }
+    mock_store = MagicMock()
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_metadata_store", return_value=mock_store):
+        response = client.post(
+            "/raggy/trl",
+            headers=headers,
+            json={"query": "ช่วยประเมิน TRL ให้หน่อย ตอนนี้มีผลทดสอบในสภาพแวดล้อมที่เกี่ยวข้องแล้ว"},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "assessment"
+    assert data["session_id"] == "sess-assessment-001"
+    assert data["assessment_result"]["decision_status"] == "needs_more_evidence"
+    assert data["missing_evidence"]
+    assert data["next_question"]
+    saved_record = mock_store.save_record.call_args.args[0]
+    assert saved_record["workflow_mode"] == "assessment"
+    assert saved_record["decision_status"] == "needs_more_evidence"
+
+
+def test_assessment_session_can_resume_and_complete_through_api_contract():
+    token = create_mock_token({"role": "researcher", "sub": "user-456"})
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Session-ID": "sess-assessment-002",
+    }
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_metadata_store", return_value=None):
+        first_response = client.post(
+            "/raggy/trl",
+            headers=headers,
+            json={"query": "ช่วยประเมิน TRL ให้หน่อย ตอนนี้มีผลทดสอบในสภาพแวดล้อมที่เกี่ยวข้องแล้ว"},
+        )
+        second_response = client.post(
+            "/raggy/trl",
+            headers=headers,
+            json={"query": "มีข้อมูลสมรรถนะและความปลอดภัยรองรับผลการทดสอบแล้ว"},
+        )
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    second_data = second_response.json()
+    assert second_data["mode"] == "assessment"
+    assert second_data["session_id"] == "sess-assessment-002"
+    assert second_data["assessment_result"]["decision_status"] == "completed"
+    assert second_data["assessment_result"]["matched_level"] == 5
+    assert second_data.get("next_question") is None
+
+
+def test_router_failure_falls_back_to_general_qa_without_crashing():
+    token = create_mock_token({"role": "researcher", "sub": "user-router-001"})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.route_trl_intent", side_effect=RuntimeError("router exploded")), \
+         patch("main.get_retriever") as MockGetRetriever, \
+         patch("main.ChatOpenAI") as MockChatOpenAI, \
+         patch("main.create_stuff_documents_chain") as MockStuffChain, \
+         patch("main.create_retrieval_chain") as MockChainFactory, \
+         patch("main.get_metadata_store", return_value=None):
+        MockGetRetriever.return_value = MagicMock()
+        MockChatOpenAI.return_value = MagicMock()
+        MockStuffChain.return_value = MagicMock()
+
+        mock_chain = MagicMock()
+        mock_chain.invoke.return_value = {"answer": "TRL 4 คือการทดสอบต้นแบบในห้องปฏิบัติการ"}
+        MockChainFactory.return_value = mock_chain
+
+        response = client.post("/raggy/trl", headers=headers, json={"query": "TRL 4 คืออะไร"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "qa"
+    assert "TRL 4" in data["answer_markdown"]
+
+
+def test_qa_orchestration_failure_returns_rag_answer_fallback():
+    token = create_mock_token({"role": "researcher", "sub": "user-qa-fallback-001"})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_retriever") as MockGetRetriever, \
+         patch("main.ChatOpenAI") as MockChatOpenAI, \
+         patch("main.create_stuff_documents_chain") as MockStuffChain, \
+         patch("main.create_retrieval_chain") as MockChainFactory, \
+         patch("main.orchestrate_query", side_effect=RuntimeError("qa orchestration exploded")), \
+         patch("main.get_metadata_store", return_value=None):
+        MockGetRetriever.return_value = MagicMock()
+        MockChatOpenAI.return_value = MagicMock()
+        MockStuffChain.return_value = MagicMock()
+
+        mock_chain = MagicMock()
+        mock_chain.invoke.return_value = {"answer": "TRL 3 คือการพิสูจน์แนวคิดเบื้องต้น"}
+        MockChainFactory.return_value = mock_chain
+
+        response = client.post("/raggy/trl", headers=headers, json={"query": "TRL 3 คืออะไร"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "qa"
+    assert "TRL 3" in data["answer_markdown"]
+    assert get_response_message("technical_error", mode="qa") not in data["answer_markdown"]
+
+
+def test_assessment_workflow_failure_returns_assessment_technical_fallback():
+    token = create_mock_token({"role": "researcher", "sub": "user-assessment-fallback-001"})
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Session-ID": "sess-assessment-fallback-001",
+    }
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.run_assessment_turn", side_effect=RuntimeError("assessment exploded")), \
+         patch("main.get_metadata_store", return_value=None):
+        response = client.post(
+            "/raggy/trl",
+            headers=headers,
+            json={"query": "ช่วยประเมิน TRL ให้หน่อย เรามีต้นแบบแล้ว"},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "assessment"
+    assert "ผลการประเมิน TRL" in data["answer_markdown"]
+    assert get_response_message("technical_error", mode="assessment") in data["answer_markdown"]
 
 
 def test_internal_metadata_session_endpoint_requires_admin_role():

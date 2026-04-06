@@ -1,0 +1,650 @@
+{
+  "main_screening_questions": [
+    {
+      "id": "prototype_exists",
+      "question_th": "คุณมี prototype มั้ย?",
+      "yes_levels": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "no_levels": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "prototype_tested",
+      "question_th": "prototype ของคุณได้รับการทดสอบยัง?",
+      "yes_levels": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "no_levels": [
+        4,
+        5
+      ]
+    },
+    {
+      "id": "prototype_operational_tested",
+      "question_th": "prototype ถูกทดสอบในสภาวะใช้งานจริงหรือยัง?",
+      "yes_levels": [
+        7,
+        8,
+        9
+      ],
+      "no_levels": [
+        6
+      ]
+    },
+    {
+      "id": "prototype_quality_verified",
+      "question_th": "prototype มีการตรวจสอบคุณภาพตามมาตรฐานมั้ย?",
+      "yes_levels": [
+        8,
+        9
+      ],
+      "no_levels": [
+        7
+      ]
+    },
+    {
+      "id": "system_widely_adopted",
+      "question_th": "ระบบถูกใช้งานจริงต่อเนื่องหรือได้รับการยอมรับในวงกว้างแล้วหรือยัง?",
+      "yes_levels": [
+        9
+      ],
+      "no_levels": [
+        8
+      ]
+    },
+    {
+      "id": "prototype_works_in_real_conditions",
+      "question_th": "prototype ทำงานในสภาวะจริงได้ไหม?",
+      "yes_levels": [
+        5
+      ],
+      "no_levels": [
+        4
+      ]
+    },
+    {
+      "id": "hypothesis_lab_tested",
+      "question_th": "สมมติฐานของคุณมีการทดลองในห้อง lab แล้วหรือยัง?",
+      "yes_levels": [
+        3
+      ],
+      "no_levels": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "hypothesis_feasibility",
+      "question_th": "สมมติฐานของคุณมีความเป็นไปได้มากน้อยแค่ไหน?",
+      "yes_levels": [
+        2
+      ],
+      "no_levels": [
+        1
+      ]
+    }
+  ],
+  "levels": [
+    {
+      "level": 1,
+      "name_th": "การสังเกตและรายงานหลักการพื้นฐาน",
+      "name_en": "Basic Principles Observed and Reported",
+      "summary_th": "เริ่มจากการค้นพบหลักการพื้นฐานและมีหลักฐานอ้างอิงงานวิจัยรองรับ",
+      "required_evidence": [
+        {
+          "id": "trl_1_basic_principles",
+          "description_th": "มีการระบุหลักการพื้นฐานหรือองค์ความรู้ที่เกี่ยวข้องกับเทคโนโลยี"
+        },
+        {
+          "id": "trl_1_documented_research",
+          "description_th": "มีเอกสารวิจัยหรือเอกสารอ้างอิงที่รายงานผลการศึกษา"
+        }
+      ],
+      "optional_evidence": [
+        {
+          "id": "trl_1_problem_statement",
+          "description_th": "มีการอธิบายโจทย์หรือบริบทการใช้งานเบื้องต้น"
+        }
+      ],
+      "domain_notes": {
+        "software": "ซอฟต์แวร์อยู่ในขั้นสังเกตหลักการพื้นฐานและองค์ความรู้ที่เกี่ยวข้อง",
+        "medical_device": "อุปกรณ์การแพทย์อยู่ในขั้นสังเกตหลักการพื้นฐาน",
+        "biotech": "ยา วัคซีน และสเต็มเซลล์เน้นการทบทวนฐานความรู้วิทยาศาสตร์",
+        "agriculture": "พันธุ์พืชและพันธุ์สัตว์ต้องมีการพิจารณาและรายงานหลักการพื้นฐาน"
+      },
+      "follow_up_questions": [
+        "มีเอกสารหรือรายงานใดที่ยืนยันว่าหลักการพื้นฐานของเทคโนโลยีนี้ถูกศึกษาแล้วบ้าง?",
+        "ช่วยอธิบายว่าหลักการพื้นฐานที่ค้นพบเกี่ยวข้องกับเทคโนโลยีนี้อย่างไร?"
+      ],
+      "source_references": [
+        {
+          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "section": "TRL 1 คือ Basic Principles Observed and Reported",
+          "excerpt": "งานวิจัยที่ได้รับการตีพิมพ์ โดยมีการจำแนกหลักการในการรองรับเทคโนโลยี"
+        }
+      ],
+      "diagnostic_questions": [
+        {
+          "id": "trl_1_diagnostic_1",
+          "question_th": "สมมติฐานมีทฤษฎีทางวิทยาศาสตร์หรือคณิตศาสตร์รองรับหรือไม่?"
+        },
+        {
+          "id": "trl_1_diagnostic_2",
+          "question_th": "สมมติฐานเป็นไปตามงานวิจัยที่เกี่ยวข้องหรือไม่?"
+        },
+        {
+          "id": "trl_1_diagnostic_3",
+          "question_th": "ผู้วิจัยมีการพัฒนาแนวคิดหรือสมการเพื่อสนับสนุนสมมติฐานหรือไม่?"
+        }
+      ]
+    },
+    {
+      "level": 2,
+      "name_th": "การกำหนดแนวคิดและการประยุกต์ใช้เทคโนโลยี",
+      "name_en": "Technology Concept and/or Application Formulated",
+      "summary_th": "มีแนวคิดเชิงเทคโนโลยีชัดเจนและเริ่มระบุการนำไปประยุกต์ใช้",
+      "required_evidence": [
+        {
+          "id": "trl_2_concept_formulated",
+          "description_th": "มีการกำหนดแนวคิดหรือสมมติฐานของเทคโนโลยีอย่างชัดเจน"
+        },
+        {
+          "id": "trl_2_application_defined",
+          "description_th": "มีคำอธิบายการประยุกต์ใช้หรือกรณีใช้งานของเทคโนโลยี"
+        }
+      ],
+      "optional_evidence": [
+        {
+          "id": "trl_2_feasibility_summary",
+          "description_th": "มีสรุปความเป็นไปได้หรือการวิเคราะห์สนับสนุนแนวคิด"
+        }
+      ],
+      "domain_notes": {
+        "software": "ซอฟต์แวร์ควรมีแนวคิดระบบหรือการใช้งานที่กำหนดแล้ว",
+        "medical_device": "อุปกรณ์การแพทย์ควรมีแนวคิดการใช้งานที่สอดคล้องกับปัญหาทางคลินิก",
+        "biotech": "ยา วัคซีน และสเต็มเซลล์เน้นการพัฒนาสมมติฐานและการออกแบบการทดลอง",
+        "agriculture": "พันธุ์พืชและพันธุ์สัตว์ต้องแสดงแนวคิดด้านเทคโนโลยีหรือการประยุกต์ใช้"
+      },
+      "follow_up_questions": [
+        "เทคโนโลยีนี้ถูกออกแบบมาเพื่อแก้ปัญหาอะไร และจะนำไปใช้ในบริบทใด?",
+        "มีเอกสารสรุปแนวคิดหรือสมมติฐานที่รองรับการพัฒนาเทคโนโลยีนี้หรือไม่?"
+      ],
+      "source_references": [
+        {
+          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "section": "TRL 2 คือ Technology Concept and/or Application Formulated",
+          "excerpt": "มีการสร้างแนวคิดด้านเทคโนโลยี และ/หรือ การประยุกต์ใช้"
+        }
+      ],
+      "diagnostic_questions": [
+        {
+          "id": "trl_2_diagnostic_1",
+          "question_th": "สมมติฐานผ่านการตรวจสอบโดยผู้เชี่ยวชาญ และยืนยันหลักการทางวิทยาศาสตร์พื้นฐานแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_2_diagnostic_2",
+          "question_th": "สมมติฐานแสดงแนวทางที่เป็นไปได้ พร้อมระบุส่วนประกอบสำคัญของเทคโนโลยีแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_2_diagnostic_3",
+          "question_th": "สมมติฐานมีการประเมินหรือคาดการณ์ประสิทธิภาพเบื้องต้นขององค์ประกอบหลักแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_2_diagnostic_4",
+          "question_th": "มีการศึกษาเบื้องต้นยืนยันความเป็นไปได้ของการจำลองกระบวนการอย่างง่าย โดยยังไม่มีการทดลองในห้องปฏิบัติการหรือไม่?"
+        },
+        {
+          "id": "trl_2_diagnostic_5",
+          "question_th": "สมมติฐานมีการทดสอบแนวคิด (Proof of Concept) ด้วยข้อมูลสังเคราะห์แล้วหรือไม่?"
+        }
+      ]
+    },
+    {
+      "level": 3,
+      "name_th": "การพิสูจน์แนวคิดด้วยการวิเคราะห์และการทดลอง",
+      "name_en": "Analytical and Experimentally Critical Function and/or Characteristic Proof of Concept",
+      "summary_th": "มีการทดสอบหรือพิสูจน์แนวคิดเบื้องต้นด้วยหลักฐานเชิงวิเคราะห์หรือการทดลอง",
+      "required_evidence": [
+        {
+          "id": "trl_3_proof_of_concept",
+          "description_th": "มีผลการพิสูจน์แนวคิดหรือผลทดลองเบื้องต้น"
+        },
+        {
+          "id": "trl_3_analytical_results",
+          "description_th": "มีผลวิเคราะห์หรือบันทึกผลทดสอบที่ชี้ว่าคุณลักษณะสำคัญทำงานได้"
+        }
+      ],
+      "optional_evidence": [
+        {
+          "id": "trl_3_referenceable_test_records",
+          "description_th": "มีบันทึกการทดสอบที่อ้างอิงผู้ดำเนินการ สถานที่ และช่วงเวลาได้"
+        }
+      ],
+      "domain_notes": {
+        "software": "ซอฟต์แวร์ควรมีต้นแบบหรือการทดลองที่พิสูจน์แนวคิด",
+        "medical_device": "อุปกรณ์การแพทย์ควรมี proof of concept",
+        "biotech": "ยา วัคซีน และสเต็มเซลล์เน้นการระบุตัวเลือกเป้าหมายและผู้สมัครเบื้องต้น",
+        "agriculture": "พันธุ์พืชและพันธุ์สัตว์อาจอยู่ในขั้นสร้างตัวอย่างจริงหรือต้นเรื่องแล้ว"
+      },
+      "follow_up_questions": [
+        "มีผลการทดลองหรือผลวิเคราะห์ใดที่ยืนยันว่าแนวคิดหลักใช้งานได้จริง?",
+        "มีรายงานการทดลองที่ระบุวิธีทดสอบและผลลัพธ์ไว้อย่างไรบ้าง?"
+      ],
+      "source_references": [
+        {
+          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "section": "TRL 3 คือ Analytical and Experimentally Critical Function and/or Characteristic Proof of Concept",
+          "excerpt": "เป็นขั้นเริ่มต้นของงานวิจัย โดยต้องมีทั้งการศึกษาวิเคราะห์และการศึกษาทดลอง"
+        }
+      ],
+      "diagnostic_questions": [
+        {
+          "id": "trl_3_diagnostic_1",
+          "question_th": "สมมติฐานถูกพิสูจน์ด้วยการทดลองเบื้องต้นแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_3_diagnostic_2",
+          "question_th": "การทดลองสามารถคาดการณ์ของส่วนประกอบเทคโนโลยีได้หรือไม่?"
+        },
+        {
+          "id": "trl_3_diagnostic_3",
+          "question_th": "มีการสร้างตัวชี้วัดประสิทธิภาพเทคโนโลยีหรือระบบแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_3_diagnostic_4",
+          "question_th": "มีข้อเท็จจริงวิทยาศาสตร์ที่เกี่ยวข้องกับการพัฒนาเทคโนโลยีที่สามารถจำลองทำซ้ำได้หรือไม่?"
+        },
+        {
+          "id": "trl_3_diagnostic_5",
+          "question_th": "มีการยืนยันคุณสมบัติและประสิทธิภาพของเทคโนโลยีหรือระบบด้วยสมการหรือตัวแปรแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_3_diagnostic_6",
+          "question_th": "มีหลักฐานงานวิจัยที่เผยแพร่แล้วว่าการรวมเทคโนโลยีและส่วนประกอบของระบบประสบความสำเร็จหรือไม่?"
+        },
+        {
+          "id": "trl_3_diagnostic_7",
+          "question_th": "มีการระบุความเสี่ยงและมีการบริหารความเสี่ยงสำหรับงานวิจัยแล้วหรือไม่?"
+        }
+      ]
+    },
+    {
+      "level": 4,
+      "name_th": "การตรวจสอบองค์ประกอบในห้องปฏิบัติการ",
+      "name_en": "Component and/or Breadboard Validation in Laboratory Environment",
+      "summary_th": "มีการรวมองค์ประกอบหลักและทดสอบได้ในสภาพแวดล้อมห้องปฏิบัติการ",
+      "required_evidence": [
+        {
+          "id": "trl_4_lab_validation",
+          "description_th": "มีผลการทดสอบองค์ประกอบหรือ breadboard ในห้องปฏิบัติการ"
+        },
+        {
+          "id": "trl_4_integrated_components",
+          "description_th": "มีหลักฐานว่าองค์ประกอบหลักถูกประกอบและทำงานร่วมกันได้"
+        }
+      ],
+      "optional_evidence": [
+        {
+          "id": "trl_4_prediction_gap_analysis",
+          "description_th": "มีการเปรียบเทียบผลทดลองกับผลที่คาดการณ์ไว้"
+        }
+      ],
+      "domain_notes": {
+        "software": "ซอฟต์แวร์ควรผ่านการตรวจสอบส่วนประกอบหรือระบบย่อยในห้องปฏิบัติการ",
+        "medical_device": "อุปกรณ์การแพทย์เน้นการพัฒนาต้นแบบ",
+        "biotech": "ยา วัคซีน และสเต็มเซลล์เน้นการเพิ่มประสิทธิภาพผู้สมัครและทดสอบ in vivo เบื้องต้น",
+        "agriculture": "พันธุ์พืชและพันธุ์สัตว์อาจเริ่มคัดเลือกประชากรในบ่อปูน โรงเรือน หรือฟาร์มปิด"
+      },
+      "follow_up_questions": [
+        "มีรายงานผลการทดสอบในห้องปฏิบัติการที่ยืนยันว่าองค์ประกอบหลักทำงานร่วมกันได้หรือไม่?",
+        "ต้นแบบหรือ breadboard ที่ใช้ทดสอบประกอบด้วยส่วนใดบ้าง และผลเป็นอย่างไร?"
+      ],
+      "source_references": [
+        {
+          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "section": "TRL 4 คือ Component and/or Breadboard Validation in Laboratory Environment",
+          "excerpt": "แสดงว่าแต่ละองค์ประกอบหรือระบบย่อยได้มีการต่อเชื่อมกันและผ่านการทดสอบในสภาพแวดล้อมห้องปฏิบัติการ"
+        }
+      ],
+      "diagnostic_questions": [
+        {
+          "id": "trl_4_diagnostic_1",
+          "question_th": "มีการสรุปและจัดทำข้อกำหนดของระบบหรือการออกแบบ โดยอ้างอิงจากความต้องการจริงแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_4_diagnostic_2",
+          "question_th": "มีการระบุวัสดุ กระบวนการ และเทคนิคที่เกี่ยวข้องแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_4_diagnostic_3",
+          "question_th": "มีต้นแบบเทคโนโลยีที่ปรับขนาดได้แล้วหรือไม่?"
+        },
+        {
+          "id": "trl_4_diagnostic_4",
+          "question_th": "มีการทดสอบและแสดงประสิทธิภาพของส่วนประกอบและต้นแบบในห้องปฏิบัติการแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_4_diagnostic_5",
+          "question_th": "มีการจำลองและตรวจสอบความเป็นไปได้ของกระบวนการแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_4_diagnostic_6",
+          "question_th": "มีส่วนประกอบของระบบครบถ้วนและเพียงพอแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_4_diagnostic_7",
+          "question_th": "มีการเริ่มศึกษาบูรณาการกับการใช้งานอื่นแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_4_diagnostic_8",
+          "question_th": "มีการระบุปัจจัยต้นทุนแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_4_diagnostic_9",
+          "question_th": "มีการเริ่มโปรแกรมการจัดการความเสี่ยงอย่างเป็นทางการและบูรณาการกับการจัดการโครงการแล้วหรือไม่?"
+        }
+      ]
+    },
+    {
+      "level": 5,
+      "name_th": "การตรวจสอบองค์ประกอบในสภาพแวดล้อมที่เกี่ยวข้อง",
+      "name_en": "Component and/or Breadboard Validation in Relevant Environment",
+      "summary_th": "องค์ประกอบหรือระบบย่อยผ่านการทดสอบในสภาพแวดล้อมที่ใกล้เคียงการใช้งานจริง",
+      "required_evidence": [
+        {
+          "id": "trl_5_relevant_environment_test",
+          "description_th": "มีผลการทดสอบในสภาพแวดล้อมที่เกี่ยวข้องกับการใช้งานจริง"
+        },
+        {
+          "id": "trl_5_supporting_performance_data",
+          "description_th": "มีข้อมูลสมรรถนะหรือความปลอดภัยที่รองรับผลการทดสอบ"
+        }
+      ],
+      "optional_evidence": [
+        {
+          "id": "trl_5_risk_notes",
+          "description_th": "มีการบันทึกข้อจำกัดหรือความเสี่ยงที่พบระหว่างทดสอบ"
+        }
+      ],
+      "domain_notes": {
+        "software": "ซอฟต์แวร์ควรทดสอบระบบย่อยในสภาพแวดล้อมที่ใกล้เคียงการใช้งานจริง",
+        "medical_device": "อุปกรณ์การแพทย์เน้น validation และ safety test",
+        "biotech": "ยา วัคซีน และสเต็มเซลล์เน้นการพัฒนากระบวนการ GMP ระยะแรก",
+        "agriculture": "พันธุ์พืชและพันธุ์สัตว์อาจย้ายไปสภาพแวดล้อมกึ่งกลางแจ้งหรือแปลงสาธิต"
+      },
+      "follow_up_questions": [
+        "มีผลทดสอบในสภาพแวดล้อมที่ใกล้เคียงการใช้งานจริงหรือสภาพแวดล้อมที่เกี่ยวข้องแล้วหรือยัง?",
+        "มีข้อมูลด้านประสิทธิภาพหรือความปลอดภัยที่รองรับผลการทดสอบระดับนี้อย่างไร?"
+      ],
+      "source_references": [
+        {
+          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "section": "TRL 5 คือ Component and/or Breadboard Validation in Relevant Environments",
+          "excerpt": "การทดสอบองค์ประกอบและ/หรืออุปกรณ์ทดลองในสภาพแวดล้อมที่เกี่ยวข้อง"
+        }
+      ],
+      "diagnostic_questions": [
+        {
+          "id": "trl_5_diagnostic_1",
+          "question_th": "ต้นแบบถูกพัฒนาและทำงานได้จริง โดยมีการรวมโมดูลหรือฟังก์ชันสำคัญ และทดสอบการทำงานภายใต้สภาวะที่ใกล้เคียงหรือเป็นจริงแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_5_diagnostic_2",
+          "question_th": "ส่วนประกอบและส่วนต่อประสานของระบบได้รับการกำหนด ตรวจสอบ และรับรองตามมาตรฐานที่ยอมรับได้แล้วหรือไม่?"
+        },
+        {
+          "id": "trl_5_diagnostic_3",
+          "question_th": "มีการวัดผลกระบวนการที่เที่ยงตรงแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_5_diagnostic_4",
+          "question_th": "มีการระบุปัญหาและประเมินความน่าเชื่อถือด้านคุณภาพแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_5_diagnostic_5",
+          "question_th": "มีการสรุปกระบวนการออกแบบสำหรับการใช้งานจริงแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_5_diagnostic_6",
+          "question_th": "มีการจัดทำและดำเนินการตามแผนบริหารความเสี่ยงแล้วหรือไม่?"
+        }
+      ]
+    },
+    {
+      "level": 6,
+      "name_th": "การสาธิตต้นแบบระบบในสภาพแวดล้อมที่เกี่ยวข้อง",
+      "name_en": "Technology System/Sub-System Model or Prototype Demonstration in a Relevant Environment",
+      "summary_th": "มีต้นแบบระบบหรือระบบย่อยที่สาธิตได้ในสภาพแวดล้อมที่เกี่ยวข้องอย่างมีนัยสำคัญ",
+      "required_evidence": [
+        {
+          "id": "trl_6_prototype_demonstration",
+          "description_th": "มีต้นแบบระบบหรือระบบย่อยที่สาธิตการทำงานได้"
+        },
+        {
+          "id": "trl_6_relevant_environment_results",
+          "description_th": "มีผลการสาธิตในสภาพแวดล้อมที่เกี่ยวข้องพร้อมผลลัพธ์รองรับ"
+        }
+      ],
+      "optional_evidence": [
+        {
+          "id": "trl_6_operational_constraints",
+          "description_th": "มีการบันทึกข้อจำกัดในการใช้งานหรือการทดสอบต้นแบบ"
+        }
+      ],
+      "domain_notes": {
+        "software": "ซอฟต์แวร์ควรมี model หรือ prototype ที่สาธิตได้ในสภาพแวดล้อมที่เกี่ยวข้อง",
+        "medical_device": "อุปกรณ์การแพทย์มักอยู่ในขั้น animal testing",
+        "biotech": "ยา วัคซีน และสเต็มเซลล์เน้น GMP pilot lot, IND และ Phase 1",
+        "agriculture": "พันธุ์พืชและพันธุ์สัตว์อาจทดสอบแบบ multi-location challenge"
+      },
+      "follow_up_questions": [
+        "มีต้นแบบระบบหรือระบบย่อยที่สาธิตในสภาพแวดล้อมที่เกี่ยวข้องแล้วหรือยัง?",
+        "ผลการสาธิตต้นแบบแสดงให้เห็นสมรรถนะหรือข้อจำกัดอะไรบ้าง?"
+      ],
+      "source_references": [
+        {
+          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "section": "TRL 6",
+          "excerpt": "Technology system/subsystem model or prototype demonstration in a relevant environment"
+        }
+      ],
+      "diagnostic_questions": [
+        {
+          "id": "trl_6_diagnostic_1",
+          "question_th": "มีการทดสอบและสาธิตต้นแบบในสภาพแวดล้อมที่เกี่ยวข้องหรือจำลองจริง พร้อมการยืนยันคุณสมบัติทางวิศวกรรมและประสิทธิภาพของระบบแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_6_diagnostic_2",
+          "question_th": "ส่วนประกอบของสินค้าหรือบริการต้นแบบสามารถทำงานร่วมกันได้ในการทดสอบการแก้ปัญหาจริงแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_6_diagnostic_3",
+          "question_th": "มีการจัดเตรียมวัสดุหรืออุปกรณ์ภายนอกครบถ้วนแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_6_diagnostic_4",
+          "question_th": "มีการรวบรวมข้อมูลด้านการบำรุงรักษาและระบบสนับสนุนที่เชื่อถือได้แล้วหรือไม่?"
+        }
+      ]
+    },
+    {
+      "level": 7,
+      "name_th": "การสาธิตต้นแบบระบบในสภาพแวดล้อมปฏิบัติการ",
+      "name_en": "System Prototype Demonstration in an Operational Environment",
+      "summary_th": "ต้นแบบระบบถูกนำไปสาธิตในบริบทการใช้งานจริงหรือใกล้เคียงจริงมาก",
+      "required_evidence": [
+        {
+          "id": "trl_7_operational_prototype",
+          "description_th": "มีต้นแบบระบบที่พร้อมสาธิตในสภาพแวดล้อมปฏิบัติการ"
+        },
+        {
+          "id": "trl_7_operational_results",
+          "description_th": "มีผลลัพธ์จากการสาธิตหรือทดลองใช้งานในสภาพแวดล้อมปฏิบัติการ"
+        }
+      ],
+      "optional_evidence": [
+        {
+          "id": "trl_7_user_feedback",
+          "description_th": "มีข้อเสนอแนะจากผู้ใช้หรือผู้ปฏิบัติงานจริง"
+        }
+      ],
+      "domain_notes": {
+        "software": "ซอฟต์แวร์ควรมี system prototype ที่สาธิตในสภาพแวดล้อมปฏิบัติการ",
+        "medical_device": "อุปกรณ์การแพทย์มักอยู่ในขั้น clinical trials",
+        "biotech": "ยา วัคซีน และสเต็มเซลล์เน้น scale-up และ Phase 2",
+        "agriculture": "พันธุ์พืชและพันธุ์สัตว์อาจทดสอบในแปลงต้นแบบเกษตรกร"
+      },
+      "follow_up_questions": [
+        "ต้นแบบระบบถูกนำไปสาธิตหรือทดลองใช้ในสภาพแวดล้อมปฏิบัติการจริงแล้วหรือยัง?",
+        "มีผลการใช้งานจริงหรือผลตอบรับจากผู้ใช้ที่ยืนยันความพร้อมของระบบหรือไม่?"
+      ],
+      "source_references": [
+        {
+          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "section": "TRL 7",
+          "excerpt": "System prototype demonstration in an operational environment"
+        }
+      ],
+      "diagnostic_questions": [
+        {
+          "id": "trl_7_diagnostic_1",
+          "question_th": "มีการทดสอบและตรวจสอบการปฏิบัติงานของอุปกรณ์หรือกระบวนการในสภาวะจริง เพื่อหาข้อจำกัด จุดบกพร่อง และยืนยันความถูกต้องกับระบบที่ใช้งานอยู่แล้วหรือไม่?"
+        },
+        {
+          "id": "trl_7_diagnostic_2",
+          "question_th": "มีต้นแบบและส่วนประกอบที่ใกล้เคียงของจริง แสดงให้เห็นถึงความพอดีและฟังก์ชันการทำงานที่สอดคล้องกับการผลิตจริงแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_7_diagnostic_3",
+          "question_th": "มีข้อมูลสนับสนุนด้านความน่าเชื่อถือการบำรุงรักษาแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_7_diagnostic_4",
+          "question_th": "มีอุปกรณ์และวัสดุที่ใช้ได้จริงในกระบวนการผลิตแล้วหรือไม่?"
+        }
+      ]
+    },
+    {
+      "level": 8,
+      "name_th": "ระบบจริงเสร็จสมบูรณ์และผ่านการรับรอง",
+      "name_en": "Actual System Completed and Qualified Through Test and Demonstration",
+      "summary_th": "ระบบจริงเสร็จสมบูรณ์และผ่านการทดสอบหรือรับรองพร้อมส่งมอบ",
+      "required_evidence": [
+        {
+          "id": "trl_8_qualification",
+          "description_th": "มีหลักฐานว่าระบบจริงเสร็จสมบูรณ์และผ่านการทดสอบหรือการรับรอง"
+        },
+        {
+          "id": "trl_8_delivery_readiness",
+          "description_th": "มีหลักฐานว่าระบบพร้อมส่งมอบหรือพร้อมใช้งานตามข้อกำหนด"
+        }
+      ],
+      "optional_evidence": [
+        {
+          "id": "trl_8_compliance_records",
+          "description_th": "มีบันทึกมาตรฐานหรือข้อกำกับที่ผ่านแล้ว เช่น GMP, ISO, CE"
+        }
+      ],
+      "domain_notes": {
+        "software": "ซอฟต์แวร์ควรเป็น actual system ที่เสร็จสมบูรณ์และผ่านการทดสอบ/สาธิต",
+        "medical_device": "อุปกรณ์การแพทย์อาจมีหลักฐานมาตรฐาน เช่น GMP, ISO13485 หรือ CE Mark",
+        "biotech": "ยา วัคซีน และสเต็มเซลล์อาจผ่าน pivotal studies และการอนุมัติหลัก",
+        "agriculture": "พันธุ์พืชและพันธุ์สัตว์ควรมีระบบตรวจสอบย้อนกลับและเห็นการใช้งานจริง"
+      },
+      "follow_up_questions": [
+        "ระบบจริงเสร็จสมบูรณ์และผ่านการทดสอบหรือการรับรองใดแล้วบ้าง?",
+        "มีหลักฐานว่าระบบพร้อมส่งมอบหรือพร้อมใช้งานตามข้อกำหนดของผู้ใช้หรือไม่?"
+      ],
+      "source_references": [
+        {
+          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "section": "TRL 8",
+          "excerpt": "Actual system completed and qualified through test and demonstration"
+        }
+      ],
+      "diagnostic_questions": [
+        {
+          "id": "trl_8_diagnostic_1",
+          "question_th": "ทุกองค์ประกอบของเทคโนโลยีหรือระบบมีความพอดี ฟังก์ชันเข้ากันได้ และเหมาะสมกับสภาพแวดล้อมการทำงานจริงแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_8_diagnostic_2",
+          "question_th": "วัสดุทั้งหมดในการผลิตพร้อมใช้งานแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_8_diagnostic_3",
+          "question_th": "มีข้อมูลและเอกสารการบำรุงรักษาหรือการสนับสนุนที่สมบูรณ์ และอยู่ภายใต้การควบคุมการกำหนดค่า (Configuration Control) แล้วหรือไม่?"
+        }
+      ]
+    },
+    {
+      "level": 9,
+      "name_th": "ระบบจริงพิสูจน์แล้วจากการใช้งานสำเร็จ",
+      "name_en": "Actual System Proven Through Successful Mission Operations",
+      "summary_th": "ระบบถูกใช้งานจริงอย่างต่อเนื่องและมีผลยืนยันความสำเร็จในการปฏิบัติการ",
+      "required_evidence": [
+        {
+          "id": "trl_9_successful_operations",
+          "description_th": "มีหลักฐานว่าระบบถูกใช้งานจริงและปฏิบัติการได้สำเร็จ"
+        },
+        {
+          "id": "trl_9_post_deployment_results",
+          "description_th": "มีรายงานติดตามผลหรือผลการใช้งานหลังส่งมอบ"
+        }
+      ],
+      "optional_evidence": [
+        {
+          "id": "trl_9_scale_evidence",
+          "description_th": "มีหลักฐานการขยายผลหรือการใช้งานในวงกว้าง"
+        }
+      ],
+      "domain_notes": {
+        "software": "ซอฟต์แวร์ควรพิสูจน์ได้จากการใช้งานจริงที่ประสบผลสำเร็จ",
+        "medical_device": "อุปกรณ์การแพทย์ควรมีการผลิตและใช้งานในกระบวนการมาตรฐานสากล",
+        "biotech": "ยา วัคซีน และสเต็มเซลล์อาจอยู่ในขั้น post-licensure/post-approval",
+        "agriculture": "พันธุ์พืชและพันธุ์สัตว์ควรถูกนำไปขยายผลจริงในแปลงเกษตรกร"
+      },
+      "follow_up_questions": [
+        "มีหลักฐานการใช้งานจริงที่ยืนยันว่าระบบทำงานสำเร็จอย่างต่อเนื่องหรือไม่?",
+        "มีรายงานติดตามผลหลังส่งมอบหรือผลลัพธ์จากการใช้งานจริงอะไรบ้าง?"
+      ],
+      "source_references": [
+        {
+          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "section": "TRL 9",
+          "excerpt": "รายงานผลการทดสอบการใช้งานจริง และรายงานการติดตามประเมินผล"
+        }
+      ],
+      "diagnostic_questions": [
+        {
+          "id": "trl_9_diagnostic_1",
+          "question_th": "เทคโนโลยีหรือระบบทำงานได้ตามที่กำหนดในเอกสารแนวคิด มีการนำไปปรับใช้ในสภาพแวดล้อมจริงและแสดงศักยภาพได้อย่างสมบูรณ์แล้วหรือไม่?"
+        },
+        {
+          "id": "trl_9_diagnostic_2",
+          "question_th": "มีการทดสอบและประเมินผลการปฏิบัติงานสำเร็จแล้ว และจัดทำเป็นเอกสารแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_9_diagnostic_3",
+          "question_th": "มีการออกแบบโดยคำนึงถึงเป้าหมายด้านต้นทุนแล้วหรือไม่?"
+        },
+        {
+          "id": "trl_9_diagnostic_4",
+          "question_th": "มีการระบุและบรรเทาความเสี่ยงด้านความปลอดภัยและผลข้างเคียงแล้วหรือไม่?"
+        }
+      ]
+    }
+  ]
+}

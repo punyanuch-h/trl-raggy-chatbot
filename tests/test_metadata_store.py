@@ -96,6 +96,26 @@ def test_build_metadata_record_excludes_transcript_content():
     assert "context" not in record
 
 
+def test_build_metadata_record_supports_workflow_audit_fields():
+    timestamp = datetime(2026, 4, 4, 15, 30, tzinfo=timezone.utc)
+
+    record = build_metadata_record(
+        user_id="user-123",
+        role="researcher",
+        route_path="/raggy/trl",
+        request_id="req-002",
+        session_id="sess-002",
+        response_status="success",
+        model_name="gpt-4o-mini",
+        timestamp=timestamp,
+        workflow_mode="assessment",
+        decision_status="needs_more_evidence",
+    )
+
+    assert record["workflow_mode"] == "assessment"
+    assert record["decision_status"] == "needs_more_evidence"
+
+
 def test_metadata_store_save_record_uses_request_id_as_document_key():
     client = FakeFirestoreClient()
     store = MetadataStore(client=client, collection_name="request_metadata")
@@ -108,6 +128,8 @@ def test_metadata_store_save_record_uses_request_id_as_document_key():
         "response_status": "success",
         "route_path": "/raggy/trl",
         "model_name": "gpt-4o-mini",
+        "workflow_mode": "qa",
+        "decision_status": "completed",
     }
 
     store.save_record(record)
@@ -129,6 +151,8 @@ def test_metadata_store_get_records_by_session_returns_matching_records_in_desce
             "response_status": "success",
             "route_path": "/raggy/trl",
             "model_name": "gpt-4o-mini",
+            "workflow_mode": "assessment",
+            "decision_status": "needs_more_evidence",
         },
         {
             "request_id": "req-200",
@@ -139,6 +163,8 @@ def test_metadata_store_get_records_by_session_returns_matching_records_in_desce
             "response_status": "success",
             "route_path": "/raggy/trl",
             "model_name": "gpt-4o-mini",
+            "workflow_mode": "assessment",
+            "decision_status": "completed",
         },
         {
             "request_id": "req-300",
@@ -149,6 +175,8 @@ def test_metadata_store_get_records_by_session_returns_matching_records_in_desce
             "response_status": "success",
             "route_path": "/raggy/trl",
             "model_name": "gpt-4o-mini",
+            "workflow_mode": "qa",
+            "decision_status": "completed",
         },
     ]
 
@@ -175,6 +203,8 @@ def test_metadata_store_list_recent_records_limits_results():
                 "response_status": "success",
                 "route_path": "/raggy/trl",
                 "model_name": "gpt-4o-mini",
+                "workflow_mode": "assessment",
+                "decision_status": "needs_more_evidence" if index == 0 else "completed",
             }
         )
 

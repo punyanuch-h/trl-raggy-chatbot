@@ -1,89 +1,130 @@
 # Architecture & Software Design: Raggy Bot
 
 ## Overview
-This document describes the current software design of the Raggy Bot API. It reflects the implementation state after the response-contract simplification and Sprint 7 metadata persistence: `/raggy/trl` returns a single canonical markdown field, `answer_markdown`, while Phase 1 stores only low-risk request metadata for audit visibility.
+This document describes the current implementation of Raggy Bot after the Thai-first TRL assessment transformation. The service now supports both document-grounded TRL QA and deterministic multi-turn TRL assessment through the same API endpoint.
 
 ## 1. High-Level Architecture
-* **Microservice Framework**: FastAPI
-* **Operating Port**: Local default `8080`; cloud execution uses the `PORT` environment variable
-* **Database**: Pinecone (Serverless) for retrieval, Firestore for metadata-only audit records
-* **LLM Engine**: OpenAI through LangChain orchestration
+- **API Layer**: FastAPI application in `main.py`
+- **Primary Route**: `POST /raggy/trl`
+- **Retrieval Store**: Pinecone for document grounding
+- **Audit Store**: Firestore for metadata-only request records
+- **LLM Usage**: OpenAI via LangChain for QA generation only
+- **Deterministic Assessment Core**: local `assessment/` modules and `rules/trl_rules.json`
 
-## 2. API Specifications (OpenAPI/Swagger)
-The generated API contract is stored in `SI/02_Software_Design/openapi.json`. This file is the formal contract reference for `/raggy/trl`.
+## 2. Main Processing Paths
+- **General QA Flow**:
+  - request
+  - JWT auth
+  - intent routing
+  - RBAC retriever
+  - LangChain retrieval chain
+  - QA agent response shaping
+  - markdown response
+- **Assessment Flow**:
+  - request
+  - JWT auth
+  - intent routing or session resume
+  - assessment interpretation
+  - session-state merge
+  - deterministic evaluator
+  - follow-up question or final assessment summary
+  - markdown plus structured assessment fields
 
-## 3. JWT Security and Auth Flow
-The endpoint is protected by FastAPI security middleware using bearer tokens.
-* The API reads `Authorization: Bearer <token>`
-* The token is verified with `HS256` and `JWT_SECRET`
-* Missing or malformed `role` claims downgrade safely to `researcher`
-* Authentication failures are converted into polite conversational responses rather than raw 401 payloads
+## 3. Auth and RBAC Design
+- Bearer auth is enforced with FastAPI security middleware.
+- JWT verification uses `RS256`.
+- Public key material can come from direct env values, `kid`-specific env values, or a PEM file path.
+- Users resolve to either `admin` or `researcher`.
+- `researcher` retrieval excludes restricted chunks from `source/private/`.
 
-## 4. Data Ingestion Pipeline
-* **Parser**: `pdf_parser.py` scans PDF files recursively
-* **Chunker**: `RecursiveCharacterTextSplitter` with configured chunk size and overlap
-* **Embedder**: OpenAI `text-embedding-3-small`
-* **Vector Store**: Pinecone with metadata-based RBAC filtering
+## 4. Component Responsibilities
+- `agents/intent_router.py`
+  - classifies TRL QA versus TRL assessment
+  - flags ambiguous cases for clarification
+- `agents/qa_agent.py`
+  - handles off-topic redirection
+  - shapes safe QA fallback behavior
+- `agents/assessment_agent.py`
+  - extracts evidence-like signals from Thai user statements
+  - does not assign the final TRL
+- `agents/orchestrator.py`
+  - coordinates router and QA/assessment agent logic for non-session orchestration
+- `assessment/rules.py`
+  - loads and validates the structured rule base
+- `assessment/evaluator.py`
+  - determines the highest supported TRL from collected evidence
+- `assessment/conversation.py`
+  - manages assessment turn logic, follow-up generation, downgrade rules, and final summaries
+- `assessment/session_state.py`
+  - stores assessment state across turns
+- `metadata_store.py`
+  - persists safe request metadata only
 
-## 5. RAG Retrieval and Prompting
-* **RBAC Retriever**: `researcher` requests exclude admin-only chunks
-* **Prompt Layer**: `rag_prompts.py` enforces tone, grounding, and markdown-safety instructions
-* **Generative Chain**: LangChain `create_retrieval_chain` combines retrieval with LLM synthesis
+## 5. Endpoint Contract
+- **Request**:
+  - `query`
+  - optional `session_id`
+  - optional `candidate_level`
+- **QA Response**:
+  - `answer_markdown`
+  - `mode: "qa"`
+- **Assessment Response**:
+  - `answer_markdown`
+  - `session_id`
+  - `mode: "assessment"`
+  - `assessment_result`
+  - `missing_evidence`
+  - optional `next_question`
 
-## 6. Response Formatting Layer
-The response-formatting layer is intentionally small and centralized.
-* **Canonical Response Field**: `answer_markdown`
-* **Formatting Utility**: `response_formatter.py` wraps successful and fallback responses in a predictable markdown-safe structure
-* **Consistency Rule**: Success, validation fallback, authentication fallback, and technical-error fallback all use the same response shape
+## 6. Response Formatting Rules
+- `answer_markdown` is the canonical display field for all user-facing responses.
+- The formatter constrains output to safe markdown patterns suitable for frontend rendering.
+- Structured assessment fields complement `answer_markdown` but do not replace it.
 
-## 7. Markdown Safety Design
-To keep frontend rendering predictable, output is constrained to:
-* one level-2 heading
-* short paragraphs
-* simple hyphen bullet lists
+## 7. Assessment Design
+- The authoritative TRL source is normalized into `rules/trl_rules.json`.
+- Evidence is evaluated deterministically against required criteria.
+- If a candidate level is not fully supported:
+  - the system asks targeted Thai follow-up questions when more evidence may still be available
+  - the system downgrades only when missing evidence is explicitly blocked or remains unsupported
+- Assessment decisions use statuses such as:
+  - `completed`
+  - `needs_more_evidence`
+  - `downgraded`
+  - `insufficient_evidence`
 
-The design intentionally excludes raw HTML, tables, code fences, and deep heading hierarchies.
+## 8. Failure Isolation and Hardening
+- Validation and authentication failures return polite conversational payloads.
+- Router failure falls back safely to general QA handling.
+- QA retrieval/orchestration failures degrade to:
+  - the retrieved RAG answer when still available
+  - or a Thai technical fallback message
+- Assessment workflow failure preserves assessment mode and returns an assessment-specific technical fallback.
+- Metadata persistence is best-effort and must not block the primary response.
 
-## 8. Current Endpoint Contract
-* **Endpoint**: `POST /raggy/trl`
-* **Request Model**: `{"query": "<string>"}`
-* **Response Model**: `{"answer_markdown": "<markdown text>"}`
-* **Rendering Intent**: Clients should render `answer_markdown` directly as markdown instead of relying on a duplicated plain-text field
+## 9. Metadata and Operational Review
+- Stored metadata fields:
+  - `request_id`
+  - `session_id`
+  - `user_id`
+  - `role`
+  - `timestamp`
+  - `response_status`
+  - `route_path`
+  - `model_name`
+  - `workflow_mode`
+  - `decision_status`
+- Excluded content:
+  - raw query text
+  - generated answer text
+  - markdown payload
+  - retrieved context
+- Admin-only review routes:
+  - `GET /internal/metadata/requests`
+  - `GET /internal/metadata/sessions/{session_id}`
 
-## 9. Metadata Persistence Layer
-Sprint 7 adds a metadata-only storage path that is intentionally separated from transcript content.
-* **Storage Adapter**: `metadata_store.py`
-* **Integration Flow**: Route -> metadata record builder -> metadata store adapter -> Firestore collection
-* **Collection Default**: `request_metadata`
-* **Document Key**: `request_id`
-* **Safe Fields Only**:
-  * `request_id`
-  * `session_id`
-  * `user_id`
-  * `role`
-  * `timestamp`
-  * `response_status`
-  * `route_path`
-  * `model_name`
-* **Excluded by Design**:
-  * raw user query
-  * generated answer
-  * markdown answer payload
-  * retrieved context
-* **Failure Policy**: Metadata persistence is best-effort. If Firestore write fails, `/raggy/trl` still returns the main answer safely and the failure is logged.
-
-## 10. Internal Operational Review
-Phase 1 does not expose user transcript history. It adds only minimal admin-only read paths for verification and troubleshooting.
-* **List Recent Records**: `GET /internal/metadata/requests`
-* **Read by Session**: `GET /internal/metadata/sessions/{session_id}`
-* **Authorization Rule**: only `admin` JWT users may access these routes
-
-## 11. Cost and Permission Rationale
-Firestore was selected for Phase 1 because it fits low-volume per-request metadata writes well and avoids building custom file lifecycle logic.
-* **Scale Assumption**: approximately 100 internal users
-* **Cost Posture**: metadata-only records are small and free-tier friendly under light internal usage
-* **IAM Guidance**: the Cloud Run service account should have only the minimum Firestore permissions needed for metadata documents
-* **Retention Guidance**: keep metadata time-bounded, recommended 30 to 90 days subject to hospital governance review
+## 10. OpenAPI Reference
+The formal API contract reference is stored in `SI/02_Software_Design/openapi.json`.
 
 ---
 *Status: Updated to current implementation*

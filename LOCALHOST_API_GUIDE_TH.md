@@ -1,39 +1,32 @@
 # คู่มือรันโปรเจกต์และทดสอบ API บน localhost
 
-เอกสารนี้อัปเดตให้ตรงกับ implementation ปัจจุบันของโปรเจกต์ โดย endpoint `/raggy/trl` จะส่งกลับ `answer_markdown` เพียง field เดียว
+เอกสารนี้อัปเดตตาม implementation ปัจจุบันของ Raggy Bot ซึ่งรองรับทั้งการตอบคำถาม TRL และการประเมิน TRL แบบหลายรอบสนทนาผ่าน endpoint เดียวคือ `/raggy/trl`
 
 ## 1. สิ่งที่ต้องมี
-
-- Python 3.11 หรือ 3.12
+- Python 3.10 ขึ้นไป
 - PowerShell บน Windows
 - OpenAI API Key
 - Pinecone API Key
+- JWT ที่ตรวจสอบด้วย `RS256`
 
-## 2. Clone โปรเจกต์และเข้าโฟลเดอร์
+## 2. ติดตั้งโปรเจกต์
 
 ```powershell
 git clone <repo-url>
 cd trl-raggy-chatbot
-```
-
-## 3. สร้าง virtual environment และติดตั้ง dependencies
-
-```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-ถ้า PowerShell block การ activate ให้รัน:
+ถ้า PowerShell block การ activate:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
 ```
 
-## 4. สร้างไฟล์ `.env`
-
-สร้างไฟล์ `.env` ที่ root ของโปรเจกต์:
+## 3. ตั้งค่า `.env`
 
 ```env
 JWT_PUBLIC_KEY=
@@ -45,94 +38,56 @@ PINECONE_API_KEY=your-pinecone-api-key
 PINECONE_INDEX_NAME=raggy-bot-trl
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_BASE_URL=https://api.openai.com/v1
+FIRESTORE_PROJECT_ID=your-gcp-project-id
+FIRESTORE_DATABASE_ID=(default)
+FIRESTORE_METADATA_COLLECTION=request_metadata
+METADATA_STORE_ENABLED=true
 ```
 
 หมายเหตุ:
-- `main.py` โหลดค่าจาก `.env` อัตโนมัติสำหรับการรัน local
-- ถ้าใช้ endpoint อื่นแทน OpenAI ตรงๆ สามารถเปลี่ยน `OPENAI_BASE_URL` ได้
-- ไม่ควร commit `.env` ที่มี secret จริง
+- `main.py` โหลดค่าจาก `.env` อัตโนมัติสำหรับ local
+- ถ้าใช้ `kid` ใน JWT header เช่น `v1` สามารถตั้ง `JWT_PUBLIC_KEY_V1` ได้
+- ถ้าไม่ต้องการใส่ public key ตรง ๆ สามารถใช้ `JWT_PUBLIC_KEY_FILE` แทนได้
 
-## 5. เตรียมข้อมูลสำหรับ RAG
+## 4. เตรียมเอกสารสำหรับ RAG
 
-วางไฟล์ PDF ลงใน:
+วางไฟล์ใน:
 - `source/` สำหรับเอกสารทั่วไป
-- `source/private/` สำหรับเอกสารที่ admin เท่านั้นควรเข้าถึงได้
+- `source/private/` สำหรับเอกสารที่ `admin` เท่านั้นควรเข้าถึงได้
 
-จากนั้น re-index ข้อมูลเข้า Pinecone:
+จากนั้นรัน:
 
 ```powershell
 python reindex.py
 ```
 
-## 6. รัน API บน localhost
+## 5. รัน API
 
 ```powershell
 python main.py
 ```
 
-เมื่อรันสำเร็จ API จะเปิดที่:
+เปิดใช้งานได้ที่:
 - `http://127.0.0.1:8080`
-- Swagger UI: `http://127.0.0.1:8080/docs`
+- `http://127.0.0.1:8080/docs`
 
-หมายเหตุ:
-- local default port จริงคือ `8080`
-- ตอน deploy cloud ระบบจะใช้ค่า `PORT` จาก environment แทน
-
-## 7. ใช้ JWT token สำหรับทดสอบ
-
-API นี้ต้องส่ง `Authorization: Bearer <token>` ทุกครั้ง
-
-ถ้า JWT จาก `trl-backend` มี claim `aud` หรือ `iss` และคุณต้องการให้ API ตรวจค่าเหล่านี้ด้วย ให้ตั้งค่า:
-- `JWT_AUDIENCE` ให้ตรงกับค่า `aud`
-- `JWT_ISSUER` ให้ตรงกับค่า `iss`
-
-ถ้าไม่ได้ตั้งค่า `JWT_AUDIENCE` ระบบจะยังรับ token ที่มี `aud` ได้อยู่ แต่จะไม่บังคับตรวจความตรงกันของ audience ในโหมด local
-
-โปรเจ็กต์นี้รองรับ `RS256` เท่านั้น:
-- ให้นำ token จริงจาก `trl-backend` login flow มาใช้
-- ให้ใส่ RSA public key ลงใน `JWT_PUBLIC_KEY`
-- ถ้ามี `kid` ใน header เช่น `kid: "v1"` สามารถใส่ key เฉพาะตัวนั้นใน `JWT_PUBLIC_KEY_V1` ได้
-- หรือจะเก็บ public key ไว้ในไฟล์ PEM แล้วตั้ง `JWT_PUBLIC_KEY_FILE` แทนก็ได้
-
-ตัวอย่าง:
-
-```env
-JWT_PUBLIC_KEY_V1="-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQE...
------END PUBLIC KEY-----"
-JWT_AUDIENCE=trl-frontend
-JWT_ISSUER=trl-backend
-```
-
-เก็บ token ไว้ในตัวแปร:
-
-```powershell
-$TOKEN = "วาง-token-ที่สร้างได้ตรงนี้"
-```
-
-## 8. ทดสอบเรียก API จาก localhost
-
-### วิธีที่ 1: ผ่าน Swagger UI
-
-เปิด:
-
-```text
-http://127.0.0.1:8080/docs
-```
-
-จากนั้น:
-1. เลือก `POST /raggy/trl`
-2. กด `Try it out`
-3. กรอก `Authorization` เป็น `Bearer <token>`
-4. ใส่ request body:
+## 6. รูปแบบ request ปัจจุบัน
 
 ```json
 {
-  "query": "What are TRL levels 1 to 9?"
+  "query": "ช่วยประเมิน TRL ให้หน่อย ตอนนี้มีผลทดสอบในสภาพแวดล้อมที่เกี่ยวข้องแล้ว",
+  "session_id": "sess_optional_001",
+  "candidate_level": 5
 }
 ```
 
-### วิธีที่ 2: ผ่าน PowerShell
+header ที่ใช้บ่อย:
+- `Authorization: Bearer <token>`
+- `Content-Type: application/json`
+- `X-Request-ID` ถ้าต้องการ correlation id
+- `X-Session-ID` ถ้าต้องการส่ง session ผ่าน header
+
+## 7. ตัวอย่างเรียก QA mode
 
 ```powershell
 $headers = @{
@@ -141,72 +96,103 @@ $headers = @{
 }
 
 $body = @{
-    query = "What are TRL levels 1 to 9?"
+    query = "TRL 4 คืออะไร"
 } | ConvertTo-Json
 
 Invoke-RestMethod -Uri "http://127.0.0.1:8080/raggy/trl" -Method Post -Headers $headers -Body $body
 ```
 
-## 9. ตัวอย่าง response ปัจจุบัน
+ตัวอย่าง response:
 
 ```json
 {
-  "answer_markdown": "## TRL Response\n\nTRL 1 begins with basic principles and early observation."
+  "answer_markdown": "## คำตอบ TRL\n\nTRL 4 คือการทดสอบต้นแบบในห้องปฏิบัติการ",
+  "mode": "qa"
 }
 ```
 
-คำอธิบาย:
-- `answer_markdown` คือคำตอบหลักของ API
-- output ถูกออกแบบให้ frontend render เป็น markdown ได้โดยตรง
-- markdown ที่คาดหวังคือ heading ระดับ 2, ย่อหน้าสั้น, และ bullet list แบบปลอดภัย
+## 8. ตัวอย่างเรียก assessment mode
 
-## 10. ทดสอบ local test environment
-
-รัน test ทั้งชุดมาตรฐาน:
+รอบแรก:
 
 ```powershell
-.\run_tests.bat
+$body = @{
+    query = "ช่วยประเมิน TRL ให้หน่อย ตอนนี้มีผลทดสอบในสภาพแวดล้อมที่เกี่ยวข้องแล้ว"
+    session_id = "sess-demo-001"
+    candidate_level = 5
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://127.0.0.1:8080/raggy/trl" -Method Post -Headers $headers -Body $body
 ```
 
-หรือรันเฉพาะส่วนที่เกี่ยวกับ endpoint นี้:
+รอบถัดไป ใช้ `session_id` เดิม:
 
 ```powershell
-.\.venv\Scripts\pytest.exe tests\test_api.py tests\test_integration.py tests\test_response_formatter.py tests\test_prompts.py
+$body = @{
+    query = "มีข้อมูลสมรรถนะและความปลอดภัยรองรับผลการทดสอบแล้ว"
+    session_id = "sess-demo-001"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://127.0.0.1:8080/raggy/trl" -Method Post -Headers $headers -Body $body
 ```
 
-## 11. ปัญหาที่พบบ่อย
+ตัวอย่าง response รอบแรก:
 
-### 11.1 `.env` ไม่ถูกอ่าน
-
-ให้ตรวจสอบว่า:
-- เปิดใช้ virtual environment แล้ว
-- มีไฟล์ `.env` อยู่ที่ root ของโปรเจกต์
-- ชื่อ key ใน `.env` สะกดถูกต้อง
-
-### 11.2 API ตอบกลับเป็นข้อความขอให้ล็อกอินใหม่
-
-มักเกิดจาก JWT token ไม่ถูกต้อง หมดอายุ หรือไม่ได้ส่ง header `Authorization`
-
-รูปแบบที่ถูกต้อง:
-
-```text
-Authorization: Bearer <your-token>
+```json
+{
+  "answer_markdown": "## ผลการประเมิน TRL\n\nผลการประเมิน TRL เบื้องต้น...",
+  "session_id": "sess-demo-001",
+  "mode": "assessment",
+  "assessment_result": {
+    "candidate_level": 5,
+    "matched_level": 4,
+    "decision_status": "needs_more_evidence",
+    "reasoning_summary": "หลักฐานของ TRL 5 ยังไม่ครบ"
+  },
+  "missing_evidence": [
+    {
+      "id": "trl_5_supporting_performance_data",
+      "description_th": "มีข้อมูลสมรรถนะหรือความปลอดภัยที่รองรับผลการทดสอบ"
+    }
+  ],
+  "next_question": "มีข้อมูลด้านประสิทธิภาพหรือความปลอดภัยที่รองรับผลการทดสอบระดับนี้อย่างไร?"
+}
 ```
 
-### 11.3 API รันได้ แต่คำตอบไม่ตรงเอกสาร
+## 9. การทดสอบอัตโนมัติ
 
-ให้ตรวจสอบว่า:
-- มีไฟล์ PDF ใน `source/` หรือ `source/private/`
-- เคยรัน `python reindex.py` แล้ว
-- Pinecone index ตรงกับค่า `PINECONE_INDEX_NAME`
-
-## 12. สรุปคำสั่งที่ใช้บ่อย
+คำสั่ง regression ที่ใช้อยู่ตอนนี้:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python reindex.py
-python main.py
-.\run_tests.bat
+& '.\.venv_local\Scripts\python.exe' -m pytest `
+  tests/test_api.py `
+  tests/test_integration.py `
+  tests/test_conversational_assessment.py `
+  tests/test_assessment_agent.py `
+  tests/test_assessment_session.py `
+  tests/test_intent_router.py `
+  tests/test_qa_agent.py `
+  tests/test_trl_evaluator.py `
+  tests/test_trl_rules.py `
+  tests/test_source_audit.py `
+  tests/test_response_templates.py `
+  tests/test_metadata_store.py `
+  tests/test_prompts.py `
+  tests/test_response_formatter.py -q
 ```
+
+## 10. ปัญหาที่พบบ่อย
+
+### 10.1 ตอบให้ login ใหม่
+- token ไม่มี
+- token หมดอายุ
+- public key ไม่ตรง
+- audience หรือ issuer ไม่ตรงกับค่าที่ตั้ง
+
+### 10.2 ได้ข้อความ technical fallback
+- retrieval chain หรือ workflow ภายในทำงานไม่สำเร็จ
+- ระบบจะพยายาม fallback อย่างปลอดภัยแทนการตอบ raw error
+
+### 10.3 assessment ไม่จบในรอบเดียว
+- เป็น behavior ปกติเมื่อหลักฐานยังไม่ครบ
+- ให้ตอบคำถามใน `next_question` และส่ง `session_id` เดิมกลับมา

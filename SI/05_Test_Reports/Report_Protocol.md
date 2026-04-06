@@ -1,14 +1,56 @@
-# ISO 29110 Test Reporting Protocol (DoD)
+# ISO/IEC 29110 Test Reporting Protocol
 
 ## Directory Purpose
-This directory (`SI/05_Test_Reports/`) exists to strictly enforce the **Definition of Done (DoD)** outlined in the Sprint 1 Plan. Under ISO 29110, an Agile TDD software increment must maintain chronological proof of testing success.
+`SI/05_Test_Reports/` stores the verification evidence required by the project Definition of Done. Each sprint increment must leave behind enough information for the team to answer:
+- what was tested
+- when it was tested
+- how it was executed
+- what the outcome was
 
-## Test Logging Script Instructions
-During **Sprint 1, Ticket 1**, a test automation script (e.g., `run_tests.bat`) will be developed at the root of the project.
+## Minimum Evidence Per Sprint
+Every completed sprint ticket should leave:
+- a reproducible test command
+- the raw console log or a referenced log file
+- a short narrative summary of scope and result
+- any known warnings, exclusions, or risks
 
-This script must be executed before a sprint ticket is marked "Done". It will automatically capture the raw output of `pytest` and pipe it into this directory.
+## Standard Local Test Execution
+The current local baseline uses the project virtual environment in `.venv_local`.
 
-A standard log will look like: 
-`test_log_YYYYMMDD_HHMMSS.txt`
+Recommended regression command:
 
-The log MUST confirm 100% test coverage for the developed feature to satisfy the DoD.
+```powershell
+& '.\.venv_local\Scripts\python.exe' -m pytest `
+  tests/test_api.py `
+  tests/test_integration.py `
+  tests/test_conversational_assessment.py `
+  tests/test_assessment_agent.py `
+  tests/test_assessment_session.py `
+  tests/test_intent_router.py `
+  tests/test_qa_agent.py `
+  tests/test_trl_evaluator.py `
+  tests/test_trl_rules.py `
+  tests/test_source_audit.py `
+  tests/test_response_templates.py `
+  tests/test_metadata_store.py `
+  tests/test_prompts.py `
+  tests/test_response_formatter.py -q
+```
+
+## Logging Convention
+Raw logs should be saved with a timestamped name such as:
+`test_log_YYYY-MM-DD_sprint11_regression.txt`
+
+Legacy timestamped files may still exist from earlier sprints and remain valid historical evidence.
+
+## Sprint 11 Verification Focus
+Sprint 11 test evidence should explicitly cover:
+- Thai-first QA responses
+- deterministic TRL assessment behavior
+- session resume behavior
+- authentication and metadata regression safety
+- failure-path hardening for routing, orchestration, and graceful fallback
+
+## Notes
+- A full suite pass is required before a Sprint 11 ticket is marked done.
+- Warnings that do not fail the suite must still be recorded in the accompanying test report.
