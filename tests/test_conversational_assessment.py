@@ -1,6 +1,7 @@
 from assessment.conversation import (
     AssessmentTurnResult,
     InMemoryAssessmentSessionStore,
+    _build_additional_recommendation,
     run_assessment_turn,
 )
 
@@ -68,3 +69,25 @@ def test_multi_turn_assessment_downgrades_when_user_explicitly_denies_missing_ev
     assert second_turn.matched_level == 4
     assert second_turn.next_question is None
     assert "TRL 4" in second_turn.answer_text
+    assert "คำแนะนำเพิ่มเติมหลังการประเมิน" in second_turn.answer_text
+    assert "TRL 5" in second_turn.answer_text
+    assert "มีข้อมูลสมรรถนะหรือความปลอดภัยที่รองรับผลการทดสอบ" in second_turn.answer_text
+
+
+def test_additional_recommendation_supports_other_levels_without_fixed_phrasing():
+    recommendation = _build_additional_recommendation(
+        matched_level=2,
+        collected_evidence={
+            "trl_1_basic_principles": True,
+            "trl_1_documented_research": True,
+            "trl_2_concept_formulated": True,
+            "trl_2_application_defined": True,
+        },
+    )
+
+    assert recommendation is not None
+    assert "คำแนะนำเพิ่มเติมหลังการประเมิน" in recommendation
+    assert "TRL 2" in recommendation
+    assert "TRL 3" in recommendation
+    assert "มีผลการพิสูจน์แนวคิดหรือผลทดลองเบื้องต้น" in recommendation
+    assert "มีผลวิเคราะห์หรือบันทึกผลทดสอบที่ชี้ว่าคุณลักษณะสำคัญทำงานได้" in recommendation

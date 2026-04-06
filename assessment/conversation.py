@@ -84,13 +84,82 @@ def _pick_next_question(
     return None, None
 
 
-def _build_completed_answer(result: AssessmentTurnResult) -> str:
+def _join_thai_list(items: list[str]) -> str:
+    if not items:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return f"{items[0]} และ {items[1]}"
+    return f"{', '.join(items[:-1])} และ {items[-1]}"
+
+
+def _build_additional_recommendation(
+    matched_level: int,
+    collected_evidence: dict[str, bool],
+) -> str | None:
+    max_level = max(rule.level for rule in load_rule_base())
+    if matched_level < 1 or matched_level >= max_level:
+        return None
+
+    current_rule = _get_rule(matched_level)
+    next_rule = _get_rule(matched_level + 1)
+
+    current_strengths = [
+        item.description_th
+        for item in current_rule.required_evidence
+        if bool(collected_evidence.get(item.id))
+    ]
+    missing_next_level_items = [
+        item.description_th
+        for item in next_rule.required_evidence
+        if not bool(collected_evidence.get(item.id))
+    ]
+    if not missing_next_level_items:
+        return None
+
+    strengths_text = _join_thai_list(current_strengths[:2]) if current_strengths else current_rule.summary_th
+    gaps_text = _join_thai_list(missing_next_level_items)
+
+    lines = [
+        "คำแนะนำเพิ่มเติมหลังการประเมิน:",
+        (
+            f"จากหลักฐานที่มีอยู่ ตอนนี้งานวิจัยอยู่ในช่วง {current_rule.name_th} "
+            f"(TRL {matched_level}) ได้ค่อนข้างชัด โดยเฉพาะในส่วนของ {strengths_text}"
+        ),
+    ]
+
+    if len(missing_next_level_items) == 1:
+        lines.append(
+            f"หากต้องการขยับไปสู่ {next_rule.name_th} (TRL {next_rule.level}) "
+            f"ประเด็นที่ควรเร่งเติมให้ชัดคือ {missing_next_level_items[0]}"
+        )
+    else:
+        lines.append(
+            f"สำหรับการไปต่อสู่ {next_rule.name_th} (TRL {next_rule.level}) "
+            f"ยังควรทำให้เห็นเพิ่มในเรื่อง {gaps_text}"
+        )
+
+    lines.append(
+        f"ประเด็นเหล่านี้จะช่วยให้ผลงานสอดคล้องกับลักษณะของระดับถัดไปที่เน้นว่า {next_rule.summary_th}"
+    )
+    lines.append(
+        f"ถ้าสามารถอธิบายผลการพัฒนาและแนบหลักฐานของส่วนนี้ได้ชัดขึ้น "
+        f"น้ำหนักของการประเมินเพื่อยืนยัน TRL {next_rule.level} จะดีขึ้นมาก"
+    )
+    return "\n".join(lines)
+
+
+def _build_completed_answer(result: AssessmentTurnResult, collected_evidence: dict[str, bool]) -> str:
     lines = [
         f"ผลการประเมิน TRL: ขณะนี้หลักฐานรองรับอยู่ที่ TRL {result.matched_level}",
         result.reasoning_summary,
     ]
     if result.decision_status == "downgraded":
         lines.append(f"ระดับที่พยายามประเมินก่อนหน้าอยู่ที่ TRL {result.candidate_level} แต่หลักฐานยังไม่ครบตามเกณฑ์")
+    additional_recommendation = _build_additional_recommendation(result.matched_level, collected_evidence)
+    if additional_recommendation:
+        lines.append(additional_recommendation)
     return "\n\n".join(lines)
 
 
@@ -157,7 +226,7 @@ def run_assessment_turn(
             reasoning_summary=evaluation.reasoning_summary,
             missing_evidence=[],
         )
-        result.answer_text = _build_completed_answer(result)
+        result.answer_text = _build_completed_answer(result, state.collected_evidence)
         session_store.save(state)
         return result
 
@@ -203,7 +272,7 @@ def run_assessment_turn(
         missing_evidence=evaluation.missing_evidence,
     )
     if decision_status == "downgraded":
-        result.answer_text = _build_completed_answer(result)
+        result.answer_text = _build_completed_answer(result, state.collected_evidence)
 
     session_store.save(state)
     return result
