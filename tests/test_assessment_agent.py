@@ -41,3 +41,21 @@ def test_assessment_agent_infers_integrated_components_from_lab_tested_prototype
     assert result.evidence["trl_4_lab_validation"].status == "supported"
     assert result.evidence["trl_4_integrated_components"].status == "supported"
     assert result.evidence["trl_4_integrated_components"].notes is not None
+
+
+def test_assessment_agent_keeps_negation_local_to_relevant_clause():
+    result = interpret_assessment_input(
+        "มีผลทดสอบในสภาพแวดล้อมที่เกี่ยวข้องแล้ว แต่ยังไม่มีข้อมูลสมรรถนะหรือความปลอดภัยรองรับผลการทดสอบ"
+    )
+
+    assert result.evidence["trl_5_relevant_environment_test"].status == "supported"
+    assert result.evidence["trl_5_supporting_performance_data"].status == "missing"
+
+
+def test_assessment_agent_detects_uncertain_evidence_without_overwriting_supported_clause():
+    result = interpret_assessment_input(
+        "เรามีต้นแบบและทดสอบในห้องปฏิบัติการแล้ว แต่ผลในสภาพแวดล้อมที่เกี่ยวข้องยังไม่ชัดเจน"
+    )
+
+    assert result.evidence["trl_4_lab_validation"].status == "supported"
+    assert result.evidence["trl_5_relevant_environment_test"].status == "uncertain"
