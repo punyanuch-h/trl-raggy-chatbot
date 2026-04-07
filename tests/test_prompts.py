@@ -16,7 +16,7 @@ def test_prompt_has_required_sections():
     assert isinstance(prompt, ChatPromptTemplate)
     
     # Check for core sections
-    messages = prompt.format_messages(context="Test Context", question="Test Question")
+    messages = prompt.format_messages(context="Test Context", input="Test Question")
     # Should have at least a system message and a human message
     role_types = [m.type for m in messages]
     assert "system" in role_types
@@ -67,3 +67,15 @@ def test_prompt_includes_markdown_safety_rules():
     assert "disallowed markdown" in prompt_str
     assert "level-2 heading" in prompt_str
     assert "bullet" in prompt_str
+
+
+def test_prompt_uses_retrieval_chain_input_variable():
+    """
+    The prompt must accept the same `input` key that LangChain's
+    retrieval chain passes through from create_retrieval_chain().
+    """
+    from rag_prompts import get_trl_prompt
+
+    prompt = get_trl_prompt()
+
+    assert set(prompt.input_variables) == {"context", "input"}

@@ -26,7 +26,11 @@ def is_trl_related(query: str) -> bool:
     return any(hint in normalized for hint in TRL_HINTS)
 
 
-def answer_general_qa(query: str, rag_answer: str | None) -> QAAgentResponse:
+def answer_general_qa(
+    query: str,
+    rag_answer: str | None,
+    retrieval_status: str = "completed",
+) -> QAAgentResponse:
     normalized = query.lower()
     if any(hint in normalized for hint in OFF_TOPIC_HINTS) and not is_trl_related(query):
         return QAAgentResponse(
@@ -34,8 +38,14 @@ def answer_general_qa(query: str, rag_answer: str | None) -> QAAgentResponse:
             source="off_topic_guard",
         )
 
-    if rag_answer:
+    if rag_answer and rag_answer.strip():
         return QAAgentResponse(answer_text=rag_answer.strip(), source="rag_chain")
+
+    if retrieval_status == "retrieval_failed":
+        return QAAgentResponse(
+            answer_text=get_response_message("technical_error", mode="qa"),
+            source="retrieval_failure_fallback",
+        )
 
     return QAAgentResponse(
         answer_text=get_response_message("insufficient_evidence", mode="qa"),

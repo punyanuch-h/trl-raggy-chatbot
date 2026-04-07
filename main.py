@@ -27,6 +27,7 @@ from metadata_store import DEFAULT_MODEL_NAME, build_metadata_record, generate_r
 from assessment.response_templates import get_response_message, get_response_title
 from assessment.conversation import run_assessment_turn
 from assessment.session_state import InMemoryAssessmentSessionStore, generate_session_id
+from source_qa import answer_query_from_source
 from agents.intent_router import IntentDecision, route_trl_intent
 from agents.orchestrator import orchestrate_query
 from agents.qa_agent import answer_general_qa
@@ -71,9 +72,14 @@ def safe_route_trl_intent(query: str) -> IntentDecision:
         )
 
 
-def build_safe_qa_answer(query: str, rag_answer: str | None, prefer_technical_error: bool = False) -> str:
+def build_safe_qa_answer(
+    query: str,
+    rag_answer: str | None,
+    prefer_technical_error: bool = False,
+    retrieval_status: str = "completed",
+) -> str:
     """Keep QA responses usable even when retrieval or orchestration is degraded."""
-    qa_response = answer_general_qa(query=query, rag_answer=rag_answer)
+    qa_response = answer_general_qa(query=query, rag_answer=rag_answer, retrieval_status=retrieval_status)
     if qa_response.source == "qa_fallback" and prefer_technical_error:
         return get_response_message("technical_error", mode="qa")
     return qa_response.answer_text
@@ -329,6 +335,7 @@ async def process_trl_query(
         else:
             rag_answer = None
             rag_failed = False
+            retrieval_status = "completed"
             try:
                 llm = ChatOpenAI(
                     model=DEFAULT_MODEL_NAME,
@@ -342,9 +349,20 @@ async def process_trl_query(
                 rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
                 rag_response = rag_chain.invoke({"input": request.query})
                 rag_answer = rag_response.get("answer")
+                retrieval_status = "empty_answer" if not (rag_answer and str(rag_answer).strip()) else "completed"
             except Exception as rag_error:
                 rag_failed = True
+                retrieval_status = "retrieval_failed"
                 print(f"[WARN] QA retrieval failed: {rag_error}")
+
+            if not (rag_answer and str(rag_answer).strip()):
+                try:
+                    rag_answer = answer_query_from_source(request.query)
+                    if rag_answer:
+                        retrieval_status = "completed"
+                        print("[SourceQA] Answered query from source/ authoritative text fallback")
+                except Exception as source_error:
+                    print(f"[WARN] Source QA fallback failed: {source_error}")
 
             try:
                 workflow_result = orchestrate_query(request.query, rag_answer=rag_answer)
@@ -362,6 +380,7 @@ async def process_trl_query(
                     request.query,
                     rag_answer=rag_answer,
                     prefer_technical_error=rag_failed,
+                    retrieval_status=retrieval_status,
                 )
                 response_payload = QueryResponse(
                     answer_markdown=format_answer_markdown(fallback_answer, title=get_response_title("qa")),

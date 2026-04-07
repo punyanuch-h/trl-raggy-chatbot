@@ -36,7 +36,7 @@ def get_trl_prompt():
         "{context}"
     )
 
-    human_message = "{question}"
+    human_message = "{input}"
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_message),

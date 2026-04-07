@@ -523,6 +523,30 @@ def test_qa_orchestration_failure_returns_rag_answer_fallback():
     assert get_response_message("technical_error", mode="qa") not in data["answer_markdown"]
 
 
+def test_qa_uses_source_folder_fallback_when_retrieval_fails_for_trl_definition():
+    token = create_mock_token({"role": "researcher", "sub": "user-source-fallback-001"})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_retriever") as MockGetRetriever, \
+         patch("main.ChatOpenAI") as MockChatOpenAI, \
+         patch("main.create_stuff_documents_chain") as MockStuffChain, \
+         patch("main.create_retrieval_chain") as MockChainFactory, \
+         patch("main.get_metadata_store", return_value=None):
+        MockGetRetriever.return_value = MagicMock()
+        MockChatOpenAI.return_value = MagicMock()
+        MockStuffChain.return_value = MagicMock()
+        MockChainFactory.side_effect = RuntimeError("pinecone unavailable")
+
+        response = client.post("/raggy/trl", headers=headers, json={"query": "TRL 4 คืออะไร"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "qa"
+    assert "TRL 4 คือ Component and/or Breadboard Validation in Laboratory Environment" in data["answer_markdown"]
+    assert "ห้องปฏิบัติการ" in data["answer_markdown"]
+
+
 def test_assessment_workflow_failure_returns_assessment_technical_fallback():
     token = create_mock_token({"role": "researcher", "sub": "user-assessment-fallback-001"})
     headers = {
