@@ -59,3 +59,48 @@ def test_assessment_agent_detects_uncertain_evidence_without_overwriting_support
 
     assert result.evidence["trl_4_lab_validation"].status == "supported"
     assert result.evidence["trl_5_relevant_environment_test"].status == "uncertain"
+
+
+def test_assessment_agent_detects_natural_thai_trl_1_basic_principles():
+    result = interpret_assessment_input("โครงการนี้อยู่ในขั้นศึกษาหลักการทางคณิตศาสตร์")
+
+    assert result.evidence["trl_1_basic_principles"].status == "supported"
+
+
+def test_assessment_agent_detects_natural_thai_trl_1_documented_research():
+    result = interpret_assessment_input("ทีมงานกำลังทบทวนงานวิจัยที่เกี่ยวข้องและทำ literature review")
+
+    assert result.evidence["trl_1_documented_research"].status == "supported"
+
+
+def test_assessment_agent_detects_hypothesis_as_trl_2_concept_signal():
+    result = interpret_assessment_input("มีการรวบรวมเอกสารเพื่อสนับสนุนสมมติฐานของโครงการ")
+
+    assert result.evidence["trl_2_concept_formulated"].status == "supported"
+
+
+def test_assessment_agent_marks_missing_technology_development_direction():
+    result = interpret_assessment_input("โครงการนี้ยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยี")
+
+    assert result.evidence["trl_2_application_defined"].status == "missing"
+
+
+def test_assessment_agent_marks_missing_experiment_for_trl_3_evidence():
+    result = interpret_assessment_input("งานนี้ยังไม่มีการทดลองใดๆ")
+
+    assert result.evidence["trl_3_proof_of_concept"].status == "missing"
+    assert result.evidence["trl_3_analytical_results"].status == "missing"
+
+
+def test_assessment_agent_target_scenario_produces_early_stage_evidence_signals():
+    result = interpret_assessment_input(
+        "โครงการนี้ยังอยู่ในขั้นศึกษาหลักการทางคณิตศาสตร์และทบทวนงานวิจัยที่เกี่ยวข้องเพื่อสนับสนุนสมมติฐาน "
+        "โดยยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลองใดๆ คุณว่างานของฉันอยู่ใน TRL level ไหน"
+    )
+
+    assert result.evidence["trl_1_basic_principles"].status == "supported"
+    assert result.evidence["trl_1_documented_research"].status == "supported"
+    assert result.evidence["trl_2_concept_formulated"].status == "supported"
+    assert result.evidence["trl_2_application_defined"].status == "missing"
+    assert result.evidence["trl_3_proof_of_concept"].status == "missing"
+    assert result.evidence["trl_3_analytical_results"].status == "missing"

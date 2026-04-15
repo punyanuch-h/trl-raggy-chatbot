@@ -74,6 +74,63 @@ def test_multi_turn_assessment_downgrades_when_user_explicitly_denies_missing_ev
     assert "มีข้อมูลสมรรถนะหรือความปลอดภัยที่รองรับผลการทดสอบ" in second_turn.answer_text
 
 
+def test_assessment_may_ask_for_experiment_evidence_when_not_mentioned():
+    result = run_assessment_turn(
+        "โครงการนี้ศึกษาหลักการพื้นฐานและทบทวนงานวิจัยแล้ว มีสมมติฐานและแนวทางประยุกต์ใช้เบื้องต้น",
+        candidate_level=3,
+    )
+
+    assert result.decision_status == "needs_more_evidence"
+    assert result.matched_level == 2
+    assert result.next_evidence_id in {"trl_3_proof_of_concept", "trl_3_analytical_results"}
+    assert all(item["status"] == "unknown" for item in result.missing_evidence)
+
+
+def test_assessment_downgrades_when_experiment_evidence_is_explicitly_missing():
+    result = run_assessment_turn(
+        "โครงการนี้ศึกษาหลักการพื้นฐานและทบทวนงานวิจัยแล้ว มีสมมติฐานและแนวทางประยุกต์ใช้เบื้องต้น แต่ยังไม่มีการทดลองใดๆ",
+        candidate_level=3,
+    )
+
+    assert result.decision_status == "downgraded"
+    assert result.matched_level == 2
+    assert result.next_question is None
+    assert any(item["status"] == "missing" for item in result.missing_evidence)
+
+
+def test_target_early_stage_scenario_downgrades_to_trl_1_without_reasking_denied_evidence():
+    result = run_assessment_turn(
+        "โครงการนี้ยังอยู่ในขั้นศึกษาหลักการทางคณิตศาสตร์และทบทวนงานวิจัยที่เกี่ยวข้องเพื่อสนับสนุนสมมติฐาน "
+        "โดยยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลองใดๆ คุณว่างานของฉันอยู่ใน TRL level ไหน"
+    )
+
+    assert result.decision_status == "downgraded"
+    assert result.matched_level == 1
+    assert result.candidate_level == 2
+    assert result.next_question is None
+    assert any(
+        item["id"] == "trl_2_application_defined" and item["status"] == "missing"
+        for item in result.missing_evidence
+    )
+
+
+def test_target_early_stage_response_explains_level_blockers_and_next_step():
+    result = run_assessment_turn(
+        "โครงการนี้ยังอยู่ในขั้นศึกษาหลักการทางคณิตศาสตร์และทบทวนงานวิจัยที่เกี่ยวข้องเพื่อสนับสนุนสมมติฐาน "
+        "โดยยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลองใดๆ คุณว่างานของฉันอยู่ใน TRL level ไหน"
+    )
+
+    assert "TRL 1" in result.answer_text
+    assert "หลักฐานที่รองรับ TRL 1" in result.answer_text
+    assert "หลักการ" in result.answer_text
+    assert "เอกสารวิจัย" in result.answer_text or "งานวิจัย" in result.answer_text
+    assert "TRL 2" in result.answer_text
+    assert "แนวทางพัฒนาเทคโนโลยี" in result.answer_text or "การประยุกต์ใช้" in result.answer_text
+    assert "TRL 3" in result.answer_text
+    assert "ยังไม่มีการทดลอง" in result.answer_text
+    assert "ขยับไปสู่" in result.answer_text
+
+
 def test_additional_recommendation_supports_other_levels_without_fixed_phrasing():
     recommendation = _build_additional_recommendation(
         matched_level=2,

@@ -130,7 +130,7 @@
       ],
       "source_references": [
         {
-          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "source_file": "source/Technology_Readiness_Level_Definition.txt",
           "section": "TRL 1 คือ Basic Principles Observed and Reported",
           "excerpt": "งานวิจัยที่ได้รับการตีพิมพ์ โดยมีการจำแนกหลักการในการรองรับเทคโนโลยี"
         }
@@ -183,7 +183,7 @@
       ],
       "source_references": [
         {
-          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "source_file": "source/Technology_Readiness_Level_Definition.txt",
           "section": "TRL 2 คือ Technology Concept and/or Application Formulated",
           "excerpt": "มีการสร้างแนวคิดด้านเทคโนโลยี และ/หรือ การประยุกต์ใช้"
         }
@@ -244,7 +244,7 @@
       ],
       "source_references": [
         {
-          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "source_file": "source/Technology_Readiness_Level_Definition.txt",
           "section": "TRL 3 คือ Analytical and Experimentally Critical Function and/or Characteristic Proof of Concept",
           "excerpt": "เป็นขั้นเริ่มต้นของงานวิจัย โดยต้องมีทั้งการศึกษาวิเคราะห์และการศึกษาทดลอง"
         }
@@ -313,7 +313,7 @@
       ],
       "source_references": [
         {
-          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "source_file": "source/Technology_Readiness_Level_Definition.txt",
           "section": "TRL 4 คือ Component and/or Breadboard Validation in Laboratory Environment",
           "excerpt": "แสดงว่าแต่ละองค์ประกอบหรือระบบย่อยได้มีการต่อเชื่อมกันและผ่านการทดสอบในสภาพแวดล้อมห้องปฏิบัติการ"
         }
@@ -390,7 +390,7 @@
       ],
       "source_references": [
         {
-          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "source_file": "source/Technology_Readiness_Level_Definition.txt",
           "section": "TRL 5 คือ Component and/or Breadboard Validation in Relevant Environments",
           "excerpt": "การทดสอบองค์ประกอบและ/หรืออุปกรณ์ทดลองในสภาพแวดล้อมที่เกี่ยวข้อง"
         }
@@ -455,7 +455,7 @@
       ],
       "source_references": [
         {
-          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "source_file": "source/Technology_Readiness_Level_Definition.txt",
           "section": "TRL 6",
           "excerpt": "Technology system/subsystem model or prototype demonstration in a relevant environment"
         }
@@ -512,7 +512,7 @@
       ],
       "source_references": [
         {
-          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "source_file": "source/Technology_Readiness_Level_Definition.txt",
           "section": "TRL 7",
           "excerpt": "System prototype demonstration in an operational environment"
         }
@@ -569,7 +569,7 @@
       ],
       "source_references": [
         {
-          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "source_file": "source/Technology_Readiness_Level_Definition.txt",
           "section": "TRL 8",
           "excerpt": "Actual system completed and qualified through test and demonstration"
         }
@@ -622,7 +622,7 @@
       ],
       "source_references": [
         {
-          "source_file": "source/04_Technology Readiness Level-TRL.txt",
+          "source_file": "source/Technology_Readiness_Level_Definition.txt",
           "section": "TRL 9",
           "excerpt": "รายงานผลการทดสอบการใช้งานจริง และรายงานการติดตามประเมินผล"
         }

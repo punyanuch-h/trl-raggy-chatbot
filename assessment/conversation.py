@@ -56,6 +56,19 @@ def _merge_interpretation(state: AssessmentSessionState, query: str) -> None:
             _mark_unique(state.uncertain_evidence_ids, evidence_id)
 
 
+def _build_evidence_state_map(state: AssessmentSessionState) -> dict[str, str]:
+    evidence_states = {
+        evidence_id: "supported"
+        for evidence_id, is_supported in state.collected_evidence.items()
+        if is_supported
+    }
+    for evidence_id in state.rejected_evidence_ids:
+        evidence_states[evidence_id] = "missing"
+    for evidence_id in state.uncertain_evidence_ids:
+        evidence_states.setdefault(evidence_id, "uncertain")
+    return evidence_states
+
+
 def _build_follow_up_question(rule: RuleBaseEntry, evidence_id: str, description_th: str) -> str:
     required_ids = [item.id for item in rule.required_evidence]
     if evidence_id in required_ids:
@@ -76,6 +89,8 @@ def _pick_next_question(
         evidence_id = item["id"]
         if evidence_id in state.asked_evidence_ids:
             continue
+        if evidence_id in state.rejected_evidence_ids:
+            continue
         question = _build_follow_up_question(rule, evidence_id, item["description_th"])
         _mark_unique(state.asked_evidence_ids, evidence_id)
         state.last_asked_question = question
@@ -92,6 +107,86 @@ def _join_thai_list(items: list[str]) -> str:
     if len(items) == 2:
         return f"{items[0]} และ {items[1]}"
     return f"{', '.join(items[:-1])} และ {items[-1]}"
+
+
+def _evidence_description_map() -> dict[str, str]:
+    descriptions: dict[str, str] = {}
+    for rule in load_rule_base():
+        for item in rule.required_evidence:
+            descriptions[item.id] = item.description_th
+    return descriptions
+
+
+def _evidence_ids_for_level(level: int) -> list[str]:
+    return [evidence_id for evidence_id, evidence_level in RULE_LEVELS.items() if evidence_level == level]
+
+
+def _descriptions_for_ids(evidence_ids: list[str]) -> list[str]:
+    descriptions = _evidence_description_map()
+    return [descriptions[evidence_id] for evidence_id in evidence_ids if evidence_id in descriptions]
+
+
+def _build_supported_evidence_explanation(matched_level: int, collected_evidence: dict[str, bool]) -> str | None:
+    if matched_level < 1:
+        return None
+
+    supported_ids = [
+        item.id
+        for item in _get_rule(matched_level).required_evidence
+        if bool(collected_evidence.get(item.id))
+    ]
+    supported_descriptions = _descriptions_for_ids(supported_ids)
+    if not supported_descriptions:
+        return None
+
+    return (
+        f"หลักฐานที่รองรับ TRL {matched_level}: "
+        f"{_join_thai_list(supported_descriptions)}"
+    )
+
+
+def _build_higher_level_blocker_explanations(
+    result: AssessmentTurnResult,
+    rejected_evidence_ids: list[str],
+) -> list[str]:
+    descriptions = _evidence_description_map()
+    explicit_missing_ids = {
+        item["id"]
+        for item in result.missing_evidence
+        if item.get("status") in {"missing", "uncertain"}
+    }
+    explicit_missing_ids.update(rejected_evidence_ids)
+
+    lines: list[str] = []
+    for level in range(result.matched_level + 1, 10):
+        level_missing_ids = [
+            evidence_id
+            for evidence_id in _evidence_ids_for_level(level)
+            if evidence_id in explicit_missing_ids
+        ]
+        if not level_missing_ids:
+            continue
+
+        missing_descriptions = [
+            descriptions[evidence_id]
+            for evidence_id in level_missing_ids
+            if evidence_id in descriptions
+        ]
+        if not missing_descriptions:
+            continue
+
+        if level == 3 and any(evidence_id.startswith("trl_3_") for evidence_id in level_missing_ids):
+            lines.append(
+                "เหตุผลที่ยังไม่รองรับ TRL 3: ผู้ใช้ระบุว่ายังไม่มีการทดลอง "
+                "จึงยังไม่มีหลักฐาน proof of concept หรือผลวิเคราะห์/ผลทดสอบรองรับ"
+            )
+        else:
+            lines.append(
+                f"เหตุผลที่ยังไม่รองรับ TRL {level}: "
+                f"ยังไม่มีหลักฐานชัดเจนเรื่อง {_join_thai_list(missing_descriptions)}"
+            )
+
+    return lines
 
 
 def _build_additional_recommendation(
@@ -150,13 +245,31 @@ def _build_additional_recommendation(
     return "\n".join(lines)
 
 
-def _build_completed_answer(result: AssessmentTurnResult, collected_evidence: dict[str, bool]) -> str:
+def _build_completed_answer(
+    result: AssessmentTurnResult,
+    collected_evidence: dict[str, bool],
+    rejected_evidence_ids: list[str] | None = None,
+) -> str:
     lines = [
         f"ผลการประเมิน TRL: ขณะนี้หลักฐานรองรับอยู่ที่ TRL {result.matched_level}",
         result.reasoning_summary,
     ]
+    supported_evidence_explanation = _build_supported_evidence_explanation(
+        result.matched_level,
+        collected_evidence,
+    )
+    if supported_evidence_explanation:
+        lines.append(supported_evidence_explanation)
+
     if result.decision_status == "downgraded":
         lines.append(f"ระดับที่พยายามประเมินก่อนหน้าอยู่ที่ TRL {result.candidate_level} แต่หลักฐานยังไม่ครบตามเกณฑ์")
+
+    blocker_explanations = _build_higher_level_blocker_explanations(
+        result,
+        rejected_evidence_ids or [],
+    )
+    lines.extend(blocker_explanations)
+
     additional_recommendation = _build_additional_recommendation(result.matched_level, collected_evidence)
     if additional_recommendation:
         lines.append(additional_recommendation)
@@ -205,7 +318,8 @@ def run_assessment_turn(
 
     _merge_interpretation(state, query)
 
-    evaluation = evaluate_trl_level(state.collected_evidence, target_level=state.candidate_level)
+    evidence_states = _build_evidence_state_map(state)
+    evaluation = evaluate_trl_level(evidence_states, target_level=state.candidate_level)
     state.matched_level = evaluation.matched_level
     state.missing_evidence = evaluation.missing_evidence
     progressive_floor = _infer_progressive_floor(state)
@@ -226,7 +340,7 @@ def run_assessment_turn(
             reasoning_summary=evaluation.reasoning_summary,
             missing_evidence=[],
         )
-        result.answer_text = _build_completed_answer(result, state.collected_evidence)
+        result.answer_text = _build_completed_answer(result, state.collected_evidence, state.rejected_evidence_ids)
         session_store.save(state)
         return result
 
@@ -272,7 +386,7 @@ def run_assessment_turn(
         missing_evidence=evaluation.missing_evidence,
     )
     if decision_status == "downgraded":
-        result.answer_text = _build_completed_answer(result, state.collected_evidence)
+        result.answer_text = _build_completed_answer(result, state.collected_evidence, state.rejected_evidence_ids)
 
     session_store.save(state)
     return result

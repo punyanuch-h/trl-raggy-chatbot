@@ -36,6 +36,57 @@ def test_router_keeps_definition_question_in_general_qa():
     assert decision.needs_clarification is False
 
 
+def test_router_keeps_trl_level_comparison_in_general_qa():
+    decision = route_trl_intent("ช่วยอธิบายความต่างระหว่าง TRL 2 กับ TRL 3")
+
+    assert decision.intent == "general_qa"
+    assert decision.needs_clarification is False
+
+
+def test_router_keeps_hypothetical_level_question_in_general_qa():
+    decision = route_trl_intent("ถ้ายังมีแค่แนวคิดกับการทบทวนงานวิจัย ควรนับเป็น TRL อะไร")
+
+    assert decision.intent == "general_qa"
+    assert decision.needs_clarification is False
+
+
+def test_router_keeps_evidence_requirement_question_in_general_qa():
+    decision = route_trl_intent("TRL 8 ต้องมีหลักฐานอะไรบ้างก่อนบอกว่าพร้อมส่งมอบ")
+
+    assert decision.intent == "general_qa"
+    assert decision.needs_clarification is False
+
+
+def test_router_keeps_generic_real_deployment_level_question_in_general_qa():
+    decision = route_trl_intent(
+        "ระบบที่ใช้งานจริงแล้วและมีรายงานติดตามผลหลังส่งมอบเกี่ยวข้องกับ TRL level ไหน"
+    )
+
+    assert decision.intent == "general_qa"
+    assert decision.needs_clarification is False
+
+
+def test_router_classifies_prototype_level_question_as_assessment():
+    decision = route_trl_intent("โครงการนี้มีต้นแบบแล้ว อยู่ TRL ไหน")
+
+    assert decision.intent == "trl_assessment"
+    assert decision.needs_clarification is False
+
+
+def test_router_classifies_missing_experiment_level_question_as_assessment():
+    decision = route_trl_intent("ยังไม่มีการทดลองใดๆ งานฉันอยู่ TRL level ไหน")
+
+    assert decision.intent == "trl_assessment"
+    assert decision.needs_clarification is False
+
+
+def test_router_classifies_project_level_question_without_trl_word_as_assessment():
+    decision = route_trl_intent("โครงการนี้มีต้นแบบและผ่านการทดสอบเบื้องต้น ถือว่าอยู่ระดับไหน")
+
+    assert decision.intent == "trl_assessment"
+    assert decision.needs_clarification is False
+
+
 def test_router_classifies_project_state_plus_trl_level_question_as_assessment():
     decision = route_trl_intent(
         "โครงการนี้ยังอยู่ในขั้นศึกษาหลักการทางคณิตศาสตร์และทบทวนงานวิจัยที่เกี่ยวข้องเพื่อสนับสนุนสมมติฐาน "

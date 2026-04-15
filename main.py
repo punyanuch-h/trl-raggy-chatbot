@@ -22,6 +22,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
 from rag_retriever import get_retriever
 from rag_prompts import get_trl_prompt
+from pinecone_manager import PineconeManager
 from response_formatter import format_answer_markdown
 from metadata_store import DEFAULT_MODEL_NAME, build_metadata_record, generate_request_id, get_metadata_store_from_env
 from assessment.response_templates import get_response_message, get_response_title
@@ -83,6 +84,18 @@ def build_safe_qa_answer(
     if qa_response.source == "qa_fallback" and prefer_technical_error:
         return get_response_message("technical_error", mode="qa")
     return qa_response.answer_text
+
+
+def try_source_qa_answer(query: str) -> str | None:
+    """Return a deterministic local-source QA answer when the query is supported."""
+    try:
+        source_answer = answer_query_from_source(query)
+        if source_answer and str(source_answer).strip():
+            print("[SourceQA] Answered deterministic query from local source/")
+            return source_answer
+    except Exception as source_error:
+        print(f"[WARN] Source QA failed: {source_error}")
+    return None
 
 # -------------------------------------------------------------
 # EXCEPTION ENGINE: Polite Error Handling System (Ticket 3)
@@ -260,6 +273,18 @@ class MetadataRecordListResponse(BaseModel):
     records: list[MetadataRecord]
 
 
+class PineconeConnectionResponse(BaseModel):
+    connected: bool
+    index_name: str
+    host: str | None = None
+    dimension: int | None = None
+    metric: str | None = None
+    ready: bool
+    state: str | None = None
+    total_vector_count: int
+    namespaces: dict[str, int]
+
+
 def get_metadata_store():
     return get_metadata_store_from_env()
 
@@ -333,36 +358,33 @@ async def process_trl_query(
                     mode=workflow_mode,
                 )
         else:
-            rag_answer = None
+            rag_answer = try_source_qa_answer(request.query)
             rag_failed = False
-            retrieval_status = "completed"
-            try:
-                llm = ChatOpenAI(
-                    model=DEFAULT_MODEL_NAME,
-                    temperature=0,
-                    base_url=os.environ.get("OPENAI_BASE_URL")
-                )
-                retriever = get_retriever(role=user.role)
-                prompt = get_trl_prompt()
+            retrieval_status = "completed" if rag_answer else "not_attempted"
+            if not rag_answer:
+                try:
+                    llm = ChatOpenAI(
+                        model=DEFAULT_MODEL_NAME,
+                        temperature=0,
+                        base_url=os.environ.get("OPENAI_BASE_URL")
+                    )
+                    retriever = get_retriever(role=user.role)
+                    prompt = get_trl_prompt()
 
-                combine_docs_chain = create_stuff_documents_chain(llm, prompt)
-                rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
-                rag_response = rag_chain.invoke({"input": request.query})
-                rag_answer = rag_response.get("answer")
-                retrieval_status = "empty_answer" if not (rag_answer and str(rag_answer).strip()) else "completed"
-            except Exception as rag_error:
-                rag_failed = True
-                retrieval_status = "retrieval_failed"
-                print(f"[WARN] QA retrieval failed: {rag_error}")
+                    combine_docs_chain = create_stuff_documents_chain(llm, prompt)
+                    rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
+                    rag_response = rag_chain.invoke({"input": request.query})
+                    rag_answer = rag_response.get("answer")
+                    retrieval_status = "empty_answer" if not (rag_answer and str(rag_answer).strip()) else "completed"
+                except Exception as rag_error:
+                    rag_failed = True
+                    retrieval_status = "retrieval_failed"
+                    print(f"[WARN] QA retrieval failed: {rag_error}")
 
             if not (rag_answer and str(rag_answer).strip()):
-                try:
-                    rag_answer = answer_query_from_source(request.query)
-                    if rag_answer:
-                        retrieval_status = "completed"
-                        print("[SourceQA] Answered query from source/ authoritative text fallback")
-                except Exception as source_error:
-                    print(f"[WARN] Source QA fallback failed: {source_error}")
+                rag_answer = try_source_qa_answer(request.query)
+                if rag_answer:
+                    retrieval_status = "completed"
 
             try:
                 workflow_result = orchestrate_query(request.query, rag_answer=rag_answer)
@@ -444,6 +466,16 @@ async def get_recent_metadata_records(
         raise HTTPException(status_code=503, detail="Metadata store unavailable")
     bounded_limit = max(1, min(limit, 100))
     return MetadataRecordListResponse(records=metadata_store.list_recent_records(limit=bounded_limit))
+
+
+@app.get("/internal/pinecone/connection", response_model=PineconeConnectionResponse)
+async def get_pinecone_connection_report(
+    user: UserRole = Security(get_current_user),
+):
+    require_admin_user(user)
+    manager = PineconeManager()
+    report = manager.get_connection_report()
+    return PineconeConnectionResponse(connected=True, **report)
 
 
 if __name__ == "__main__":

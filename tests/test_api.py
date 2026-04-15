@@ -94,7 +94,8 @@ def test_raggy_trl_valid_admin_token():
     with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
          patch("main.get_retriever") as MockGetRetriever, \
          patch("main.ChatOpenAI") as MockChatOpenAI, \
-         patch("main.create_retrieval_chain") as MockChainFactory:
+         patch("main.create_retrieval_chain") as MockChainFactory, \
+         patch("main.get_metadata_store", return_value=None):
         
         # 1. Mock Retriever
         mock_retriever = MagicMock()
@@ -111,7 +112,7 @@ def test_raggy_trl_valid_admin_token():
         }
         MockChainFactory.return_value = mock_chain
         
-        response = client.post("/raggy/trl", headers=headers, json={"query": "What is TRL 4?"})
+        response = client.post("/raggy/trl", headers=headers, json={"query": "How should I plan TRL readiness?"})
         
         assert response.status_code == 200
         data = response.json()
@@ -308,7 +309,8 @@ def test_raggy_trl_missing_role_downgrades_to_researcher():
     with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
          patch("main.get_retriever") as MockGetRetriever, \
          patch("main.ChatOpenAI") as MockChatOpenAI, \
-         patch("main.create_retrieval_chain") as MockChainFactory:
+         patch("main.create_retrieval_chain") as MockChainFactory, \
+         patch("main.get_metadata_store", return_value=None):
         
         MockGetRetriever.return_value = MagicMock()
         MockChatOpenAI.return_value = MagicMock()
@@ -319,7 +321,7 @@ def test_raggy_trl_missing_role_downgrades_to_researcher():
         }
         MockChainFactory.return_value = mock_chain
         
-        response = client.post("/raggy/trl", headers=headers, json={"query": "What is TRL 4?"})
+        response = client.post("/raggy/trl", headers=headers, json={"query": "How should I plan TRL readiness?"})
         
         assert response.status_code == 200
         data = response.json()
@@ -468,6 +470,40 @@ def test_assessment_session_can_resume_and_complete_through_api_contract():
     assert second_data.get("next_question") is None
 
 
+def test_target_early_stage_scenario_returns_assessment_result_through_api():
+    token = create_mock_token({"role": "researcher", "sub": "user-target-scenario-001"})
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Session-ID": "sess-sprint13-target-api",
+    }
+    target_query = (
+        "โครงการนี้ยังอยู่ในขั้นศึกษาหลักการทางคณิตศาสตร์และทบทวนงานวิจัยที่เกี่ยวข้องเพื่อสนับสนุนสมมติฐาน "
+        "โดยยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลองใดๆ คุณว่างานของฉันอยู่ใน TRL level ไหน"
+    )
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_metadata_store", return_value=None):
+        response = client.post("/raggy/trl", headers=headers, json={"query": target_query})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "assessment"
+    assert data["session_id"] == "sess-sprint13-target-api"
+    assert data["assessment_result"]["candidate_level"] == 2
+    assert data["assessment_result"]["matched_level"] == 1
+    assert data["assessment_result"]["decision_status"] == "downgraded"
+    assert data["missing_evidence"]
+    assert any(
+        item["id"] == "trl_2_application_defined" and item["status"] == "missing"
+        for item in data["missing_evidence"]
+    )
+    assert data.get("next_question") is None
+    assert "TRL 1" in data["answer_markdown"]
+    assert "หลักฐานที่รองรับ TRL 1" in data["answer_markdown"]
+    assert "TRL 3" in data["answer_markdown"]
+    assert "ยังไม่มีการทดลอง" in data["answer_markdown"]
+
+
 def test_router_failure_falls_back_to_general_qa_without_crashing():
     token = create_mock_token({"role": "researcher", "sub": "user-router-001"})
     headers = {"Authorization": f"Bearer {token}"}
@@ -545,6 +581,55 @@ def test_qa_uses_source_folder_fallback_when_retrieval_fails_for_trl_definition(
     assert data["mode"] == "qa"
     assert "TRL 4 คือ Component and/or Breadboard Validation in Laboratory Environment" in data["answer_markdown"]
     assert "ห้องปฏิบัติการ" in data["answer_markdown"]
+
+
+def test_qa_uses_source_folder_before_retrieval_for_deterministic_comparison():
+    token = create_mock_token({"role": "researcher", "sub": "user-source-first-001"})
+    headers = {"Authorization": f"Bearer {token}"}
+    query = "ช่วยเปรียบเทียบ TRL 5 กับ TRL 6 ว่าต่างกันตรงไหน"
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_retriever", side_effect=AssertionError("retriever should not be used")), \
+         patch("main.ChatOpenAI", side_effect=AssertionError("llm should not be used")), \
+         patch("main.create_stuff_documents_chain", side_effect=AssertionError("rag should not be used")), \
+         patch("main.create_retrieval_chain", side_effect=AssertionError("rag should not be used")), \
+         patch("main.get_metadata_store", return_value=None):
+        response = client.post("/raggy/trl", headers=headers, json={"query": query})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "qa"
+    assert "TRL 5" in data["answer_markdown"]
+    assert "TRL 6" in data["answer_markdown"]
+    assert "prototype" in data["answer_markdown"] or "ต้นแบบ" in data["answer_markdown"]
+    assert "ข้อมูลจากเอกสารอ้างอิงยังไม่เพียงพอ" not in data["answer_markdown"]
+
+
+def test_open_ended_qa_still_falls_back_to_rag_when_source_has_no_answer():
+    token = create_mock_token({"role": "researcher", "sub": "user-rag-fallback-001"})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.get_retriever") as MockGetRetriever, \
+         patch("main.ChatOpenAI") as MockChatOpenAI, \
+         patch("main.create_stuff_documents_chain") as MockStuffChain, \
+         patch("main.create_retrieval_chain") as MockChainFactory, \
+         patch("main.get_metadata_store", return_value=None):
+        MockGetRetriever.return_value = MagicMock()
+        MockChatOpenAI.return_value = MagicMock()
+        MockStuffChain.return_value = MagicMock()
+        mock_chain = MagicMock()
+        mock_chain.invoke.return_value = {"answer": "RAG answer for broader TRL strategy."}
+        MockChainFactory.return_value = mock_chain
+
+        response = client.post("/raggy/trl", headers=headers, json={"query": "How should our team plan TRL work this quarter?"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "qa"
+    assert "RAG answer for broader TRL strategy." in data["answer_markdown"]
+    MockGetRetriever.assert_called_once()
+    MockChainFactory.assert_called_once()
 
 
 def test_assessment_workflow_failure_returns_assessment_technical_fallback():
@@ -628,3 +713,40 @@ def test_internal_metadata_recent_endpoint_returns_recent_records_for_admin():
 
     assert response.status_code == 200
     assert response.json()["records"][0]["request_id"] == "req-999"
+
+
+def test_internal_pinecone_connection_endpoint_requires_admin_role():
+    token = create_mock_token({"role": "researcher", "sub": "user-123"})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False):
+        response = client.get("/internal/pinecone/connection", headers=headers)
+
+    assert response.status_code == 403
+
+
+def test_internal_pinecone_connection_endpoint_returns_live_report_shape_for_admin():
+    token = create_mock_token({"role": "admin", "sub": "admin-123"})
+    headers = {"Authorization": f"Bearer {token}"}
+    mock_manager = MagicMock()
+    mock_manager.get_connection_report.return_value = {
+        "index_name": "raggy-bot-trl-test",
+        "host": "example-index-host",
+        "dimension": 1536,
+        "metric": "cosine",
+        "ready": True,
+        "state": "Ready",
+        "total_vector_count": 42,
+        "namespaces": {"default": 42},
+    }
+
+    with patch.dict(os.environ, {"JWT_PUBLIC_KEY_V1": TEST_PUBLIC_KEY}, clear=False), \
+         patch("main.PineconeManager", return_value=mock_manager):
+        response = client.get("/internal/pinecone/connection", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["connected"] is True
+    assert data["index_name"] == "raggy-bot-trl-test"
+    assert data["total_vector_count"] == 42
+    assert data["namespaces"] == {"default": 42}

@@ -1,0 +1,377 @@
+{
+  "description": "Random manual QA inputs for POST /raggy/trl. Includes 5 general QA questions and 18 TRL assessment scenarios: one complete request and one session-based multi-turn request for each TRL level.",
+  "endpoint": "POST /raggy/trl",
+  "qa_cases": [
+    {
+      "id": "qa_random_001",
+      "request": {
+        "query": "TRL 4 คืออะไร อธิบายแบบสั้นๆ ให้เข้าใจง่าย"
+      },
+      "expected_mode": "qa",
+      "case_tags": ["deterministic_source_qa", "definition"],
+      "expected_answer_contains": ["TRL 4", "ห้องปฏิบัติการ"],
+      "forbidden_answer_contains": ["ข้อมูลจากเอกสารอ้างอิงยังไม่เพียงพอ"]
+    },
+    {
+      "id": "qa_random_002",
+      "request": {
+        "query": "ช่วยเปรียบเทียบ TRL 5 กับ TRL 6 ว่าต่างกันตรงไหน"
+      },
+      "expected_mode": "qa",
+      "case_tags": ["deterministic_source_qa", "comparison"],
+      "expected_answer_contains": ["TRL 5", "TRL 6"],
+      "expected_answer_contains_any": ["ต้นแบบ", "prototype"],
+      "forbidden_answer_contains": ["ข้อมูลจากเอกสารอ้างอิงยังไม่เพียงพอ"]
+    },
+    {
+      "id": "qa_random_003",
+      "request": {
+        "query": "ถ้ายังมีแค่แนวคิดกับการทบทวนงานวิจัย ควรนับเป็น TRL อะไร"
+      },
+      "expected_mode": "qa"
+    },
+    {
+      "id": "qa_random_004",
+      "request": {
+        "query": "TRL 8 ต้องมีหลักฐานอะไรบ้างก่อนบอกว่าพร้อมส่งมอบ"
+      },
+      "expected_mode": "qa",
+      "case_tags": ["deterministic_source_qa", "evidence"],
+      "expected_answer_contains": ["TRL 8", "หลักฐาน", "ผลทดสอบ", "พร้อมส่งมอบ"],
+      "forbidden_answer_contains": ["ข้อมูลจากเอกสารอ้างอิงยังไม่เพียงพอ"]
+    },
+    {
+      "id": "qa_random_005",
+      "request": {
+        "query": "ระบบที่ใช้งานจริงแล้วและมีรายงานติดตามผลหลังส่งมอบเกี่ยวข้องกับ TRL level ไหน"
+      },
+      "expected_mode": "qa"
+    }
+  ],
+  "assessment_cases": [
+    {
+      "id": "assessment_trl_1_complete",
+      "trl_level": 1,
+      "case_type": "complete_question",
+      "expected_mode": "assessment",
+      "expected_matched_level": 1,
+      "request": {
+        "query": "ช่วยประเมิน TRL ให้หน่อย งานนี้ยังอยู่ในขั้นศึกษาหลักการพื้นฐานของเทคโนโลยี มีทฤษฎีพื้นฐานรองรับ และมีเอกสารวิจัยกับ literature review ที่รายงานผลการศึกษาแล้ว",
+        "candidate_level": 1
+      }
+    },
+    {
+      "id": "assessment_trl_1_session",
+      "trl_level": 1,
+      "case_type": "session_followup",
+      "expected_mode": "assessment",
+      "expected_matched_level_after_final_turn": 1,
+      "session_id": "sess-random-trl-1",
+      "turns": [
+        {
+          "request": {
+            "query": "ช่วยประเมิน TRL งานนี้มีการศึกษาหลักการพื้นฐานและอธิบายทฤษฎีพื้นฐานของเทคโนโลยีแล้ว",
+            "session_id": "sess-random-trl-1",
+            "candidate_level": 1
+          },
+          "expected_status": "needs_more_evidence"
+        },
+        {
+          "request": {
+            "query": "มีเอกสารวิจัย รายงานวิจัย และ literature review รองรับผลการศึกษานั้นแล้ว",
+            "session_id": "sess-random-trl-1"
+          },
+          "expected_status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "assessment_trl_2_complete",
+      "trl_level": 2,
+      "case_type": "complete_question",
+      "expected_mode": "assessment",
+      "expected_matched_level": 2,
+      "request": {
+        "query": "ช่วยประเมิน TRL ของโครงการนี้ ตอนนี้มีแนวคิดและสมมติฐานของเทคโนโลยีชัดเจนแล้ว พร้อมกำหนดแนวทางประยุกต์ใช้และ use case สำหรับผู้ใช้งานเป้าหมาย",
+        "candidate_level": 2
+      }
+    },
+    {
+      "id": "assessment_trl_2_session",
+      "trl_level": 2,
+      "case_type": "session_followup",
+      "expected_mode": "assessment",
+      "expected_matched_level_after_final_turn": 2,
+      "session_id": "sess-random-trl-2",
+      "turns": [
+        {
+          "request": {
+            "query": "อยากให้ช่วยประเมิน TRL ตอนนี้เรามีแนวคิดและกรอบแนวคิดของเทคโนโลยีแล้ว",
+            "session_id": "sess-random-trl-2",
+            "candidate_level": 2
+          },
+          "expected_status": "needs_more_evidence"
+        },
+        {
+          "request": {
+            "query": "ส่วนการใช้งานก็ระบุแล้วว่าจะนำไปประยุกต์ใช้กับการคัดกรองข้อมูลวิจัย และมี use case สำหรับผู้ดูแลระบบ",
+            "session_id": "sess-random-trl-2"
+          },
+          "expected_status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "assessment_trl_3_complete",
+      "trl_level": 3,
+      "case_type": "complete_question",
+      "expected_mode": "assessment",
+      "expected_matched_level": 3,
+      "request": {
+        "query": "ช่วยประเมิน TRL ตอนนี้มี proof of concept และการทดลองเบื้องต้นเพื่อพิสูจน์แนวคิดแล้ว มีผลทดลองกับผลวิเคราะห์ที่บันทึกไว้ว่าคุณลักษณะสำคัญทำงานได้",
+        "candidate_level": 3
+      }
+    },
+    {
+      "id": "assessment_trl_3_session",
+      "trl_level": 3,
+      "case_type": "session_followup",
+      "expected_mode": "assessment",
+      "expected_matched_level_after_final_turn": 3,
+      "session_id": "sess-random-trl-3",
+      "turns": [
+        {
+          "request": {
+            "query": "ช่วยดู TRL ให้หน่อย เราทำ proof of concept และทดสอบสมมติฐานเบื้องต้นแล้ว",
+            "session_id": "sess-random-trl-3",
+            "candidate_level": 3
+          },
+          "expected_status": "needs_more_evidence"
+        },
+        {
+          "request": {
+            "query": "มีผลทดลอง ผลวิเคราะห์ และบันทึกผลทดสอบที่ชี้ว่าฟังก์ชันหลักทำงานได้",
+            "session_id": "sess-random-trl-3"
+          },
+          "expected_status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "assessment_trl_4_complete",
+      "trl_level": 4,
+      "case_type": "complete_question",
+      "expected_mode": "assessment",
+      "expected_matched_level": 4,
+      "request": {
+        "query": "ช่วยประเมิน TRL ของต้นแบบระบบนี้ มีต้นแบบที่ทดสอบในห้องปฏิบัติการแล้ว องค์ประกอบทำงานร่วมกันได้ มีการวัดผลและบันทึกข้อมูลใน lab",
+        "candidate_level": 4
+      }
+    },
+    {
+      "id": "assessment_trl_4_session",
+      "trl_level": 4,
+      "case_type": "session_followup",
+      "expected_mode": "assessment",
+      "expected_matched_level_after_final_turn": 4,
+      "session_id": "sess-random-trl-4",
+      "turns": [
+        {
+          "request": {
+            "query": "ช่วยประเมิน TRL ตอนนี้มีต้นแบบและทดสอบต้นแบบในห้องปฏิบัติการแล้ว",
+            "session_id": "sess-random-trl-4",
+            "candidate_level": 4
+          },
+          "expected_status": "completed"
+        },
+        {
+          "request": {
+            "query": "องค์ประกอบทำงานร่วมกันได้ เชื่อมต่อกันครบ และมีการวัดผลบันทึกข้อมูลใน lab แล้ว",
+            "session_id": "sess-random-trl-4"
+          },
+          "expected_status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "assessment_trl_5_complete",
+      "trl_level": 5,
+      "case_type": "complete_question",
+      "expected_mode": "assessment",
+      "expected_matched_level": 5,
+      "request": {
+        "query": "ช่วยประเมิน TRL ให้หน่อย ต้นแบบถูกทดสอบในสภาพแวดล้อมที่เกี่ยวข้องแล้ว และมีข้อมูลสมรรถนะกับความปลอดภัยรองรับผลการทดสอบ",
+        "candidate_level": 5
+      }
+    },
+    {
+      "id": "assessment_trl_5_session",
+      "trl_level": 5,
+      "case_type": "session_followup",
+      "expected_mode": "assessment",
+      "expected_matched_level_after_final_turn": 5,
+      "session_id": "sess-random-trl-5",
+      "turns": [
+        {
+          "request": {
+            "query": "ช่วยประเมิน TRL ตอนนี้ต้นแบบผ่านการทดสอบในสภาพแวดล้อมที่เกี่ยวข้องแล้ว",
+            "session_id": "sess-random-trl-5",
+            "candidate_level": 5
+          },
+          "expected_status": "needs_more_evidence"
+        },
+        {
+          "request": {
+            "query": "มีข้อมูลสมรรถนะ performance และข้อมูลความปลอดภัยที่รองรับผลการทดสอบครบแล้ว",
+            "session_id": "sess-random-trl-5"
+          },
+          "expected_status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "assessment_trl_6_complete",
+      "trl_level": 6,
+      "case_type": "complete_question",
+      "expected_mode": "assessment",
+      "expected_matched_level": 6,
+      "request": {
+        "query": "ช่วยประเมิน TRL โครงการนี้มีการสาธิตต้นแบบหรือ prototype demonstration แล้ว และมีผลการสาธิตกับผลในสภาพแวดล้อมที่เกี่ยวข้องแสดงว่าระบบทำงานได้ตามเกณฑ์",
+        "candidate_level": 6
+      }
+    },
+    {
+      "id": "assessment_trl_6_session",
+      "trl_level": 6,
+      "case_type": "session_followup",
+      "expected_mode": "assessment",
+      "expected_matched_level_after_final_turn": 6,
+      "session_id": "sess-random-trl-6",
+      "turns": [
+        {
+          "request": {
+            "query": "ช่วยประเมิน TRL ตอนนี้เรามีการสาธิตต้นแบบและ prototype demonstration แล้ว",
+            "session_id": "sess-random-trl-6",
+            "candidate_level": 6
+          },
+          "expected_status": "needs_more_evidence"
+        },
+        {
+          "request": {
+            "query": "มีผลการสาธิตและผลในสภาพแวดล้อมที่เกี่ยวข้องยืนยันว่าต้นแบบทำงานได้ตามเกณฑ์",
+            "session_id": "sess-random-trl-6"
+          },
+          "expected_status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "assessment_trl_7_complete",
+      "trl_level": 7,
+      "case_type": "complete_question",
+      "expected_mode": "assessment",
+      "expected_matched_level": 7,
+      "request": {
+        "query": "ช่วยประเมิน TRL ระบบนี้เป็นต้นแบบที่ทดสอบในสภาพแวดล้อมปฏิบัติการหรือ operational environment แล้ว และมีผลการสาธิตในงานจริงรองรับ",
+        "candidate_level": 7
+      }
+    },
+    {
+      "id": "assessment_trl_7_session",
+      "trl_level": 7,
+      "case_type": "session_followup",
+      "expected_mode": "assessment",
+      "expected_matched_level_after_final_turn": 7,
+      "session_id": "sess-random-trl-7",
+      "turns": [
+        {
+          "request": {
+            "query": "ช่วยประเมิน TRL เรามีต้นแบบระบบที่นำไปทดสอบใน operational environment แล้ว",
+            "session_id": "sess-random-trl-7",
+            "candidate_level": 7
+          },
+          "expected_status": "needs_more_evidence"
+        },
+        {
+          "request": {
+            "query": "มีผลการสาธิตในงานจริงจากผู้ใช้ภาคสนามแล้ว",
+            "session_id": "sess-random-trl-7"
+          },
+          "expected_status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "assessment_trl_8_complete",
+      "trl_level": 8,
+      "case_type": "complete_question",
+      "expected_mode": "assessment",
+      "expected_matched_level": 8,
+      "request": {
+        "query": "ช่วยประเมิน TRL ตอนนี้ระบบจริงผ่านการรับรอง qualified ตามมาตรฐานแล้ว และมีหลักฐานว่าพร้อมส่งมอบพร้อมใช้งานตามข้อกำหนด",
+        "candidate_level": 8
+      }
+    },
+    {
+      "id": "assessment_trl_8_session",
+      "trl_level": 8,
+      "case_type": "session_followup",
+      "expected_mode": "assessment",
+      "expected_matched_level_after_final_turn": 8,
+      "session_id": "sess-random-trl-8",
+      "turns": [
+        {
+          "request": {
+            "query": "ช่วยประเมิน TRL ระบบจริงผ่านการรับรองและผ่านมาตรฐานที่เกี่ยวข้องแล้ว",
+            "session_id": "sess-random-trl-8",
+            "candidate_level": 8
+          },
+          "expected_status": "needs_more_evidence"
+        },
+        {
+          "request": {
+            "query": "มีเอกสารยืนยันว่าพร้อมส่งมอบและพร้อมใช้งานตามข้อกำหนดของผู้ใช้แล้ว",
+            "session_id": "sess-random-trl-8"
+          },
+          "expected_status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "assessment_trl_9_complete",
+      "trl_level": 9,
+      "case_type": "complete_question",
+      "expected_mode": "assessment",
+      "expected_matched_level": 9,
+      "request": {
+        "query": "ช่วยประเมิน TRL ระบบนี้ใช้งานจริงแล้ว ปฏิบัติการได้สำเร็จต่อเนื่อง และมีรายงานติดตามผลหลังส่งมอบกับการประเมินผลหลังใช้งานจริง",
+        "candidate_level": 9
+      }
+    },
+    {
+      "id": "assessment_trl_9_session",
+      "trl_level": 9,
+      "case_type": "session_followup",
+      "expected_mode": "assessment",
+      "expected_matched_level_after_final_turn": 9,
+      "session_id": "sess-random-trl-9",
+      "turns": [
+        {
+          "request": {
+            "query": "ช่วยประเมิน TRL ระบบถูกนำไปใช้งานจริงและมี successful operations แล้ว",
+            "session_id": "sess-random-trl-9",
+            "candidate_level": 9
+          },
+          "expected_status": "needs_more_evidence"
+        },
+        {
+          "request": {
+            "query": "มีรายงานติดตามผลหลังส่งมอบและผลประเมินผลหลังใช้งานจริงครบแล้ว",
+            "session_id": "sess-random-trl-9"
+          },
+          "expected_status": "completed"
+        }
+      ]
+    }
+  ]
+}

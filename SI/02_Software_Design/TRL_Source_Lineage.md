@@ -1,10 +1,11 @@
 # TRL Source Lineage and Normalization Note
 
 ## Purpose
-This note records the source-of-truth lineage for Sprint 8 and explains how the Thai TRL criteria were normalized into runtime rule files without changing the original meaning.
+This note records the source-of-truth lineage for Sprint 8 onward and explains how the Thai TRL criteria were normalized into runtime rule files without changing the original meaning.
 
 ## Authoritative Source
-* Runtime authority for TRL assessment in Sprint 8 is `source/04_Technology Readiness Level-TRL.txt`
+* Runtime authority for TRL assessment and definition QA is `source/Technology_Readiness_Level_Definition.txt`
+* Adjacent-level comparison and transition QA uses `source/compare_each_level_of_trl.txt`
 * The file is stored as UTF-8 and is loaded explicitly with `encoding="utf-8"`
 * Verification is implemented in `assessment/source_audit.py`
 
@@ -39,7 +40,9 @@ The most important differences between the source text and the normalized rule f
 * Evidence expectations are expressed as boolean-checkable items for deterministic evaluation
 
 ## Change Control
-Any future update to `source/04_Technology Readiness Level-TRL.txt` must trigger:
+Any future update to `source/Technology_Readiness_Level_Definition.txt` must trigger:
 1. source integrity re-verification
 2. rule review against the changed section
 3. regression testing for schema loading and evaluator behavior
+
+Any future update to `source/compare_each_level_of_trl.txt` must also trigger source QA regression tests for comparison and transition questions.

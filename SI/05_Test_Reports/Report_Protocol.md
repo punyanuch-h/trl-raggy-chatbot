@@ -51,6 +51,16 @@ Sprint 11 test evidence should explicitly cover:
 - authentication and metadata regression safety
 - failure-path hardening for routing, orchestration, and graceful fallback
 
+## Sprint 13 Verification Focus
+Sprint 13 test evidence should explicitly cover:
+- smarter routing for natural Thai project-level questions
+- QA preservation for definition and comparison questions
+- natural Thai evidence parsing for TRL 1-3
+- explicit missing evidence states for TRL 2 and TRL 3 blockers
+- deterministic downgrade behavior when users deny required evidence
+- response text explaining matched level, higher-level blockers, and next action
+- API contract coverage for the target early-stage project scenario
+
 ## Notes
-- A full suite pass is required before a Sprint 11 ticket is marked done.
+- A full suite pass is required before a sprint ticket is marked done.
 - Warnings that do not fail the suite must still be recorded in the accompanying test report.

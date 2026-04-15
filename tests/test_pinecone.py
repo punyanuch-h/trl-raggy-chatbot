@@ -49,3 +49,37 @@ def test_init_skips_creation_when_index_exists():
         
         # Assert that index creation was NOT called since it exists
         mock_client.create_index.assert_not_called()
+
+
+def test_connection_report_exposes_safe_index_stats():
+    with patch("pinecone_manager.Pinecone") as MockPinecone:
+        mock_client = MagicMock()
+        mock_index = MagicMock()
+        MockPinecone.return_value = mock_client
+        mock_client.list_indexes.return_value.names.return_value = ["raggy-bot-trl-test"]
+        mock_client.Index.return_value = mock_index
+
+        mock_client.describe_index.return_value = {
+            "dimension": 1536,
+            "metric": "cosine",
+            "host": "example-index-host",
+            "status": {"ready": True, "state": "Ready"},
+        }
+        mock_index.describe_index_stats.return_value = {
+            "total_vector_count": 42,
+            "namespaces": {"": {"vector_count": 42}},
+        }
+
+        from pinecone_manager import PineconeManager
+        manager = PineconeManager()
+
+        report = manager.get_connection_report()
+
+        assert report["index_name"] == "raggy-bot-trl-test"
+        assert report["dimension"] == 1536
+        assert report["metric"] == "cosine"
+        assert report["host"] == "example-index-host"
+        assert report["ready"] is True
+        assert report["state"] == "Ready"
+        assert report["total_vector_count"] == 42
+        assert report["namespaces"] == {"default": 42}
