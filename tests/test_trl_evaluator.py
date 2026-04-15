@@ -38,3 +38,20 @@ def test_evaluator_downgrades_when_higher_level_is_incomplete():
     assert result.matched_level == 7
     assert result.candidate_level == 8
     assert "ลดระดับ" in result.reasoning_summary
+
+
+def test_evaluator_distinguishes_explicit_missing_from_unknown_evidence_state():
+    evidence = _evidence_for_level(2)
+    evidence["trl_3_proof_of_concept"] = "missing"
+
+    result = evaluate_trl_level(evidence, target_level=3)
+
+    assert result.matched_level == 2
+    assert any(
+        item["id"] == "trl_3_proof_of_concept" and item["status"] == "missing"
+        for item in result.missing_evidence
+    )
+    assert any(
+        item["id"] == "trl_3_analytical_results" and item["status"] == "unknown"
+        for item in result.missing_evidence
+    )

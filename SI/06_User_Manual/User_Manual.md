@@ -64,8 +64,24 @@ Assessment example:
   - the response returns `mode: "qa"`
 - **Assessment mode**
   - provide evidence about the project state
+  - you can write naturally in Thai; a rigid evidence template is not required
+  - examples include early research, literature review, prototype status, experiment status, and explicitly missing evidence
   - keep sending follow-up answers with the same `session_id`
   - the response may include `next_question` until the system can confirm or downgrade the level
+
+Natural assessment example:
+
+```json
+{
+  "query": "โครงการนี้ยังอยู่ในขั้นศึกษาหลักการทางคณิตศาสตร์และทบทวนงานวิจัยที่เกี่ยวข้องเพื่อสนับสนุนสมมติฐาน โดยยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลองใดๆ คุณว่างานของฉันอยู่ใน TRL level ไหน"
+}
+```
+
+Expected behavior:
+- the response returns `mode: "assessment"`
+- the assessment result is downgraded to the currently supported level
+- the answer explains why the project is closer to TRL 1
+- explicitly missing technology application or experiment evidence is treated as a blocker for higher levels
 
 ## 8. Understanding Key Fields
 - `answer_markdown`
@@ -76,6 +92,8 @@ Assessment example:
   - contains `candidate_level`, `matched_level`, `decision_status`, and `reasoning_summary`
 - `missing_evidence`
   - shows which evidence items are still not supported
+  - each item may include a `status` such as `unknown`, `missing`, or `uncertain`
+  - `missing` means the user explicitly said the evidence is not available
 - `next_question`
   - tells the user what evidence to provide next
 

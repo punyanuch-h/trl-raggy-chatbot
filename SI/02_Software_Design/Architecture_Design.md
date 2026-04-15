@@ -84,6 +84,8 @@ This document describes the current implementation of Raggy Bot after the Thai-f
 ## 7. Assessment Design
 - The authoritative TRL source is normalized into `rules/trl_rules.json`.
 - Evidence is evaluated deterministically against required criteria.
+- Natural Thai project descriptions can be interpreted without requiring a rigid evidence template.
+- Evidence signals can distinguish supported, explicitly missing, uncertain, and unknown evidence.
 - If a candidate level is not fully supported:
   - the system asks targeted Thai follow-up questions when more evidence may still be available
   - the system downgrades only when missing evidence is explicitly blocked or remains unsupported
@@ -125,6 +127,11 @@ This document describes the current implementation of Raggy Bot after the Thai-f
 
 ## 10. OpenAPI Reference
 The formal API contract reference is stored in `SI/02_Software_Design/openapi.json`.
+
+## 11. Future Router Design Note
+Sprint 13 added a design spike for a possible hybrid router. The future design is documented in `SI/02_Software_Design/Hybrid_Router_Design_Guardrails.md`.
+
+Key guardrail: any optional LLM classifier may classify workflow intent only. Final TRL assessment must remain deterministic through the local rule base and evaluator.
 
 ---
 *Status: Updated to current implementation*

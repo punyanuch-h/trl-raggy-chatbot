@@ -17,10 +17,12 @@ def test_researcher_retrieval_adds_metadata_filter():
     filter that explicitly excludes 'admin' role content.
     """
     with patch("rag_retriever.PineconeVectorStore") as MockStore, \
-         patch("rag_retriever.OpenAIEmbeddings") as MockEmbed:
-        
+         patch("rag_retriever.OpenAIEmbeddings") as MockEmbed, \
+         patch("rag_retriever.PineconeManager") as MockManager:
+
         # Mock OpenAI to prevent api_key error
         MockEmbed.return_value = MagicMock()
+        MockManager.return_value = MagicMock()
         
         mock_vectorstore = MagicMock()
         MockStore.from_existing_index.return_value = mock_vectorstore
@@ -50,10 +52,12 @@ def test_admin_retrieval_has_no_filter():
     metadata filter, allowing access to all content.
     """
     with patch("rag_retriever.PineconeVectorStore") as MockStore, \
-         patch("rag_retriever.OpenAIEmbeddings") as MockEmbed:
-        
+         patch("rag_retriever.OpenAIEmbeddings") as MockEmbed, \
+         patch("rag_retriever.PineconeManager") as MockManager:
+
         # Mock OpenAI to prevent api_key error
         MockEmbed.return_value = MagicMock()
+        MockManager.return_value = MagicMock()
         
         mock_vectorstore = MagicMock()
         MockStore.from_existing_index.return_value = mock_vectorstore

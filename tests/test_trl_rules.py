@@ -30,7 +30,7 @@ def test_rule_base_entries_keep_traceable_source_references():
 
     for entry in rule_base:
         assert entry.source_references
-        assert all(ref.source_file.endswith("04_Technology Readiness Level-TRL.txt") for ref in entry.source_references)
+        assert all(ref.source_file == "source/Technology_Readiness_Level_Definition.txt" for ref in entry.source_references)
         assert all(ref.section for ref in entry.source_references)
 
 

@@ -12,12 +12,38 @@ class EvaluationResult(BaseModel):
     reasoning_summary: str
 
 
+SUPPORTED_EVIDENCE_STATES = {"supported", "conflicting", "true", "yes", "present"}
+MISSING_EVIDENCE_STATES = {"missing", "rejected", "explicitly_missing", "false", "no", "absent"}
+UNCERTAIN_EVIDENCE_STATES = {"uncertain", "unknown", "maybe"}
+
+
+def _evidence_state(value: object) -> str:
+    if value is True:
+        return "supported"
+    if value is False or value is None:
+        return "unknown"
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in SUPPORTED_EVIDENCE_STATES:
+            return "supported"
+        if normalized in MISSING_EVIDENCE_STATES:
+            return "missing"
+        if normalized in UNCERTAIN_EVIDENCE_STATES:
+            return "uncertain"
+    return "supported" if bool(value) else "unknown"
+
+
 def _evaluate_single_level(rule: RuleBaseEntry, evidence: dict[str, object]) -> list[dict[str, str]]:
     missing = []
     for item in rule.required_evidence:
-        if not bool(evidence.get(item.id)):
-            missing.append({"id": item.id, "description_th": item.description_th})
+        state = _evidence_state(evidence.get(item.id))
+        if state != "supported":
+            missing.append({"id": item.id, "description_th": item.description_th, "status": state})
     return missing
+
+
+def _has_explicit_missing(missing: list[dict[str, str]]) -> bool:
+    return any(item.get("status") in {"missing", "uncertain"} for item in missing)
 
 
 def evaluate_trl_level(evidence: dict[str, object], target_level: int | None = None) -> EvaluationResult:
@@ -40,9 +66,10 @@ def evaluate_trl_level(evidence: dict[str, object], target_level: int | None = N
             if rule.level == highest_attempt.level:
                 summary = f"หลักฐานรองรับครบตามเกณฑ์ TRL {rule.level}"
             else:
+                blocker_note = " โดยมีหลักฐานบางส่วนที่ผู้ใช้ระบุชัดว่ายังไม่มีหรือยังไม่แน่ใจ" if _has_explicit_missing(last_missing) else ""
                 summary = (
                     f"หลักฐานของ TRL {highest_attempt.level} ยังไม่ครบ จึงลดระดับมาที่ TRL {rule.level} "
-                    "ซึ่งมีหลักฐานครบตามเกณฑ์"
+                    f"ซึ่งมีหลักฐานครบตามเกณฑ์{blocker_note}"
                 )
             return EvaluationResult(
                 candidate_level=highest_attempt.level,

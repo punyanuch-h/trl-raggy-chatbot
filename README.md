@@ -38,15 +38,23 @@ METADATA_STORE_ENABLED=true
 ```
 
 ## Knowledge Ingestion
-Place PDF files in:
+Place supported `.pdf` and `.txt` files in:
 - `source/` for general documents
 - `source/private/` for admin-only documents
+
+Current source-aware TRL QA files:
+- `source/Technology_Readiness_Level_Definition.txt`
+- `source/compare_each_level_of_trl.txt`
+- `source/helper_classification_domain_of_research.txt`
+- `source/helper_classification_level_trl.txt`
 
 Then re-index:
 
 ```powershell
 python reindex.py
 ```
+
+Local deterministic TRL QA can answer common definition, comparison, evidence, and transition questions before Pinecone is refreshed. Broader RAG quality still requires reindexing after source changes. See [Source_Refresh_Reindex_Workflow.md](SI/02_Software_Design/Source_Refresh_Reindex_Workflow.md).
 
 ## Run Locally
 ```powershell
@@ -148,5 +156,6 @@ Recommended regression command:
 ## Documentation
 - [LOCALHOST_API_GUIDE_TH.md](LOCALHOST_API_GUIDE_TH.md)
 - [Architecture_Design.md](SI/02_Software_Design/Architecture_Design.md)
+- [Source_Refresh_Reindex_Workflow.md](SI/02_Software_Design/Source_Refresh_Reindex_Workflow.md)
 - [User_Manual.md](SI/06_User_Manual/User_Manual.md)
 - [Final_Release_Report.md](SI/07_Product_Release/Final_Release_Report.md)

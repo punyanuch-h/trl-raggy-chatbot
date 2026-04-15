@@ -120,7 +120,7 @@ def test_reindex_calls_upload_for_all_files():
 def test_reindex_discovers_supported_pdf_and_txt_files():
     fake_files = [
         "source/trl_basics.pdf",
-        "source/04_Technology Readiness Level-TRL.txt",
+        "source/Technology_Readiness_Level_Definition.txt",
         "source/private/admin_trl_notes.pdf",
         "source/ignore.md",
     ]
@@ -131,7 +131,7 @@ def test_reindex_discovers_supported_pdf_and_txt_files():
         discovered = discover_source_files()
 
     assert discovered == [
-        "source/04_Technology Readiness Level-TRL.txt",
+        "source/Technology_Readiness_Level_Definition.txt",
         "source/private/admin_trl_notes.pdf",
         "source/trl_basics.pdf",
     ]

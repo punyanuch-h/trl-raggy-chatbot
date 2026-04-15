@@ -20,12 +20,40 @@ class AssessmentInterpretation(BaseModel):
 
 
 SUPPORTED_RULE_PATTERNS: dict[str, tuple[str, ...]] = {
-    "trl_1_basic_principles": ("หลักการพื้นฐาน", "องค์ความรู้พื้นฐาน"),
-    "trl_1_documented_research": ("เอกสารวิจัย", "รายงานวิจัย", "ตีพิมพ์", "เอกสารอ้างอิง"),
-    "trl_2_concept_formulated": ("แนวคิด", "สมมติฐาน", "concept"),
-    "trl_2_application_defined": ("ประยุกต์ใช้", "กรณีใช้งาน", "การใช้งาน"),
-    "trl_3_proof_of_concept": ("พิสูจน์แนวคิด", "proof of concept", "ผลทดลองเบื้องต้น"),
-    "trl_3_analytical_results": ("ผลวิเคราะห์", "บันทึกผลทดสอบ", "ผลทดลอง"),
+    "trl_1_basic_principles": (
+        "ศึกษาหลักการ",
+        "หลักการทางคณิตศาสตร์",
+        "หลักการพื้นฐาน",
+        "ทฤษฎีพื้นฐาน",
+        "องค์ความรู้พื้นฐาน",
+    ),
+    "trl_1_documented_research": (
+        "ทบทวนงานวิจัย",
+        "วรรณกรรมที่เกี่ยวข้อง",
+        "เอกสารวิจัย",
+        "รายงานวิจัย",
+        "ตีพิมพ์",
+        "เอกสารอ้างอิง",
+        "paper",
+        "literature review",
+    ),
+    "trl_2_concept_formulated": ("แนวคิด", "สมมติฐาน", "concept", "กรอบแนวคิด"),
+    "trl_2_application_defined": (
+        "แนวทางพัฒนาเทคโนโลยี",
+        "แนวทางประยุกต์ใช้",
+        "ประยุกต์ใช้",
+        "กรณีใช้งาน",
+        "การใช้งาน",
+        "use case",
+    ),
+    "trl_3_proof_of_concept": (
+        "ทดลองเบื้องต้น",
+        "พิสูจน์แนวคิด",
+        "proof of concept",
+        "ทดสอบสมมติฐาน",
+        "ผลทดลองเบื้องต้น",
+    ),
+    "trl_3_analytical_results": ("ผลทดลอง", "ผลวิเคราะห์", "บันทึกผลทดสอบ"),
     "trl_4_lab_validation": ("ห้องปฏิบัติการ", "lab", "ทดสอบต้นแบบ"),
     "trl_4_integrated_components": ("องค์ประกอบทำงานร่วมกัน", "ทำงานร่วมกันได้", "เชื่อมต่อกัน", "มีต้นแบบ", "ต้นแบบระบบ"),
     "trl_5_relevant_environment_test": ("สภาพแวดล้อมที่เกี่ยวข้อง", "relevant environment", "แปลงสาธิต"),
@@ -38,6 +66,35 @@ SUPPORTED_RULE_PATTERNS: dict[str, tuple[str, ...]] = {
     "trl_8_delivery_readiness": ("พร้อมส่งมอบ", "พร้อมใช้งาน"),
     "trl_9_successful_operations": ("ใช้งานจริง", "successful operations", "ปฏิบัติการได้สำเร็จ"),
     "trl_9_post_deployment_results": ("ติดตามผล", "หลังส่งมอบ", "ประเมินผล"),
+}
+
+MISSING_RULE_PATTERNS: dict[str, tuple[str, ...]] = {
+    "trl_2_application_defined": (
+        "ยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยี",
+        "ยังไม่ได้กำหนดแนวทางพัฒนาเทคโนโลยี",
+        "ไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยี",
+        "ยังไม่มีแนวทางพัฒนาเทคโนโลยี",
+        "ยังไม่มีแนวทางประยุกต์ใช้",
+        "ยังไม่ได้กำหนดการใช้งาน",
+    ),
+    "trl_3_proof_of_concept": (
+        "ยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลอง",
+        "ไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลอง",
+        "ยังไม่มีการทดลอง",
+        "ยังไม่ได้ทดลอง",
+        "ไม่มีการทดลอง",
+        "ไม่มีผลทดลอง",
+    ),
+    "trl_3_analytical_results": (
+        "ยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลอง",
+        "ไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลอง",
+        "ยังไม่มีการทดลอง",
+        "ยังไม่ได้ทดลอง",
+        "ไม่มีการทดลอง",
+        "ไม่มีผลทดลอง",
+        "ยังไม่มีผลทดลอง",
+        "ยังไม่มีผลวิเคราะห์",
+    ),
 }
 
 NEGATION_MARKERS = ("ยังไม่ได้", "ยังไม่", "ไม่มี", "ไม่เคย", "ไม่ได้")
@@ -201,6 +258,61 @@ def _upsert_supported_evidence(
     )
 
 
+def _upsert_missing_evidence(
+    evidence: dict[str, EvidenceSignal],
+    evidence_id: str,
+    matched_segments: list[str],
+    notes: str,
+) -> None:
+    current = evidence.get(evidence_id)
+    matched_text = " | ".join(dict.fromkeys(matched_segments)) or None
+
+    if current and current.status == "supported":
+        evidence[evidence_id] = EvidenceSignal(
+            status="conflicting",
+            matched_text=" | ".join(
+                dict.fromkeys([item for item in (current.matched_text, matched_text) if item])
+            )
+            or None,
+            notes=notes,
+        )
+        return
+
+    if current and current.status in {"missing", "conflicting"}:
+        return
+
+    evidence[evidence_id] = EvidenceSignal(
+        status="missing",
+        matched_text=matched_text,
+        notes=notes,
+    )
+
+
+def _apply_explicit_missing_evidence(text: str, evidence: dict[str, EvidenceSignal]) -> None:
+    normalized_text = _normalize_text(text)
+
+    for evidence_id, patterns in MISSING_RULE_PATTERNS.items():
+        matched_segments: list[str] = []
+        for pattern in patterns:
+            start = 0
+            while True:
+                match_index = normalized_text.find(pattern, start)
+                if match_index == -1:
+                    break
+                context_window = _extract_context_window(normalized_text, pattern, match_index)
+                if context_window:
+                    matched_segments.append(context_window)
+                start = match_index + len(pattern)
+
+        if matched_segments:
+            _upsert_missing_evidence(
+                evidence,
+                evidence_id,
+                matched_segments,
+                "Explicitly marked missing by the user's assessment description.",
+            )
+
+
 def _apply_inferred_evidence(text: str, segments: list[str], evidence: dict[str, EvidenceSignal]) -> None:
     normalized_text = _normalize_text(text)
     has_prototype = _contains_any(normalized_text, PROTOTYPE_MARKERS)
@@ -291,6 +403,7 @@ def interpret_assessment_input(text: str) -> AssessmentInterpretation:
             matched_text=" | ".join(dict.fromkeys(matched_phrases)) or None,
         )
 
+    _apply_explicit_missing_evidence(text, evidence)
     _apply_inferred_evidence(text, segments, evidence)
 
     supported_like_levels = [
