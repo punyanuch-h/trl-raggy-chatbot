@@ -95,3 +95,31 @@ def test_router_classifies_project_state_plus_trl_level_question_as_assessment()
 
     assert decision.intent == "trl_assessment"
     assert decision.needs_clarification is False
+
+
+def test_router_classifies_english_definition_question_as_general_qa():
+    decision = route_trl_intent("What is TRL 4?")
+
+    assert decision.intent == "general_qa"
+    assert decision.needs_clarification is False
+
+
+def test_router_classifies_english_comparison_question_as_general_qa():
+    decision = route_trl_intent("Compare TRL 5 and TRL 6.")
+
+    assert decision.intent == "general_qa"
+    assert decision.needs_clarification is False
+
+
+def test_router_classifies_english_assessment_request_as_assessment():
+    decision = route_trl_intent("Please assess my project. We have tested the prototype in a relevant environment.")
+
+    assert decision.intent == "trl_assessment"
+    assert decision.needs_clarification is False
+
+
+def test_router_handles_mixed_language_assessment_request_safely():
+    decision = route_trl_intent("ช่วย assess project นี้หน่อย เรามี prototype tested in relevant environment แล้ว")
+
+    assert decision.intent == "trl_assessment"
+    assert decision.needs_clarification is False

@@ -32,6 +32,7 @@ from source_qa import answer_query_from_source
 from agents.intent_router import IntentDecision, route_trl_intent
 from agents.orchestrator import orchestrate_query
 from agents.qa_agent import answer_general_qa
+from language_support import detect_language, resolve_response_language, localize_missing_evidence
 
 app = FastAPI(
     title="Raggy Bot API",
@@ -53,10 +54,11 @@ app.add_middleware(
 )
 
 
-def build_query_response(answer_text: str, mode: str = "qa") -> dict:
+def build_query_response(answer_text: str, mode: str = "qa", language: str = "th") -> dict:
     """Return the canonical markdown response payload."""
     return {
-        "answer_markdown": format_answer_markdown(answer_text, title=get_response_title(mode)),
+        "answer_markdown": format_answer_markdown(answer_text, title=get_response_title(mode, language=language)),
+        "language": language,
     }
 
 
@@ -78,18 +80,24 @@ def build_safe_qa_answer(
     rag_answer: str | None,
     prefer_technical_error: bool = False,
     retrieval_status: str = "completed",
+    language: str = "th",
 ) -> str:
     """Keep QA responses usable even when retrieval or orchestration is degraded."""
-    qa_response = answer_general_qa(query=query, rag_answer=rag_answer, retrieval_status=retrieval_status)
+    qa_response = answer_general_qa(
+        query=query,
+        rag_answer=rag_answer,
+        retrieval_status=retrieval_status,
+        language=language,
+    )
     if qa_response.source == "qa_fallback" and prefer_technical_error:
-        return get_response_message("technical_error", mode="qa")
+        return get_response_message("technical_error", mode="qa", language=language)
     return qa_response.answer_text
 
 
-def try_source_qa_answer(query: str) -> str | None:
+def try_source_qa_answer(query: str, language: str = "th") -> str | None:
     """Return a deterministic local-source QA answer when the query is supported."""
     try:
-        source_answer = answer_query_from_source(query)
+        source_answer = answer_query_from_source(query, language=language)
         if source_answer and str(source_answer).strip():
             print("[SourceQA] Answered deterministic query from local source/")
             return source_answer
@@ -240,6 +248,7 @@ class QueryRequest(BaseModel):
     query: str
     session_id: str | None = None
     candidate_level: int | None = None
+    response_language: str | None = None
 
 class AssessmentResultPayload(BaseModel):
     candidate_level: int
@@ -250,6 +259,7 @@ class AssessmentResultPayload(BaseModel):
 
 class QueryResponse(BaseModel):
     answer_markdown: str
+    language: str
     session_id: str | None = None
     mode: str | None = None
     assessment_result: AssessmentResultPayload | None = None
@@ -316,6 +326,8 @@ async def process_trl_query(
     try:
         request_id = http_request.headers.get("X-Request-ID") or generate_request_id()
         session_id = request.session_id or http_request.headers.get("X-Session-ID")
+        query_language = detect_language(request.query)
+        response_language = resolve_response_language(request.query, request.response_language)
         response.headers["X-Request-ID"] = request_id
 
         assessment_session_store = get_assessment_session_store()
@@ -329,11 +341,17 @@ async def process_trl_query(
                     session_id=active_session_id,
                     store=assessment_session_store,
                     candidate_level=request.candidate_level,
+                    language=response_language,
                 )
                 workflow_mode = "assessment"
                 decision_status = assessment_turn.decision_status
+                localized_missing_evidence = localize_missing_evidence(assessment_turn.missing_evidence, response_language)
                 response_payload = QueryResponse(
-                    answer_markdown=format_answer_markdown(assessment_turn.answer_text, title=get_response_title("assessment")),
+                    answer_markdown=format_answer_markdown(
+                        assessment_turn.answer_text,
+                        title=get_response_title("assessment", language=response_language),
+                    ),
+                    language=response_language,
                     session_id=assessment_turn.session_id,
                     mode=workflow_mode,
                     assessment_result=AssessmentResultPayload(
@@ -342,7 +360,7 @@ async def process_trl_query(
                         decision_status=assessment_turn.decision_status,
                         reasoning_summary=assessment_turn.reasoning_summary,
                     ),
-                    missing_evidence=assessment_turn.missing_evidence,
+                    missing_evidence=localized_missing_evidence,
                     next_question=assessment_turn.next_question,
                 )
             except Exception as assessment_error:
@@ -351,14 +369,15 @@ async def process_trl_query(
                 decision_status = "technical_fallback"
                 response_payload = QueryResponse(
                     answer_markdown=format_answer_markdown(
-                        get_response_message("technical_error", mode="assessment"),
-                        title=get_response_title("assessment"),
+                        get_response_message("technical_error", mode="assessment", language=response_language),
+                        title=get_response_title("assessment", language=response_language),
                     ),
+                    language=response_language,
                     session_id=session_id,
                     mode=workflow_mode,
                 )
         else:
-            rag_answer = try_source_qa_answer(request.query)
+            rag_answer = try_source_qa_answer(request.query, language=response_language)
             rag_failed = False
             retrieval_status = "completed" if rag_answer else "not_attempted"
             if not rag_answer:
@@ -382,16 +401,20 @@ async def process_trl_query(
                     print(f"[WARN] QA retrieval failed: {rag_error}")
 
             if not (rag_answer and str(rag_answer).strip()):
-                rag_answer = try_source_qa_answer(request.query)
+                rag_answer = try_source_qa_answer(request.query, language=response_language)
                 if rag_answer:
                     retrieval_status = "completed"
 
             try:
-                workflow_result = orchestrate_query(request.query, rag_answer=rag_answer)
+                workflow_result = orchestrate_query(request.query, rag_answer=rag_answer, language=response_language)
                 workflow_mode = workflow_result.mode
                 decision_status = "clarification_requested" if workflow_result.needs_clarification else "completed"
                 response_payload = QueryResponse(
-                    answer_markdown=format_answer_markdown(workflow_result.answer_text, title=get_response_title(workflow_result.mode)),
+                    answer_markdown=format_answer_markdown(
+                        workflow_result.answer_text,
+                        title=get_response_title(workflow_result.mode, language=response_language),
+                    ),
+                    language=response_language,
                     mode=workflow_result.mode,
                 )
             except Exception as orchestration_error:
@@ -403,13 +426,21 @@ async def process_trl_query(
                     rag_answer=rag_answer,
                     prefer_technical_error=rag_failed,
                     retrieval_status=retrieval_status,
+                    language=response_language,
                 )
                 response_payload = QueryResponse(
-                    answer_markdown=format_answer_markdown(fallback_answer, title=get_response_title("qa")),
+                    answer_markdown=format_answer_markdown(
+                        fallback_answer,
+                        title=get_response_title("qa", language=response_language),
+                    ),
+                    language=response_language,
                     mode=workflow_mode,
                 )
 
-        print(f"[ORCHESTRATOR] request_id={request_id} intent={decision.intent} mode={workflow_mode} status={decision_status}")
+        print(
+            f"[ORCHESTRATOR] request_id={request_id} intent={decision.intent} "
+            f"mode={workflow_mode} status={decision_status} query_language={query_language} response_language={response_language}"
+        )
 
         metadata_store = get_metadata_store()
         if metadata_store:

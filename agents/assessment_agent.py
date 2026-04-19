@@ -26,6 +26,9 @@ SUPPORTED_RULE_PATTERNS: dict[str, tuple[str, ...]] = {
         "หลักการพื้นฐาน",
         "ทฤษฎีพื้นฐาน",
         "องค์ความรู้พื้นฐาน",
+        "basic principles",
+        "foundational principles",
+        "fundamental principles",
     ),
     "trl_1_documented_research": (
         "ทบทวนงานวิจัย",
@@ -36,8 +39,17 @@ SUPPORTED_RULE_PATTERNS: dict[str, tuple[str, ...]] = {
         "เอกสารอ้างอิง",
         "paper",
         "literature review",
+        "published research",
+        "documented research",
     ),
-    "trl_2_concept_formulated": ("แนวคิด", "สมมติฐาน", "concept", "กรอบแนวคิด"),
+    "trl_2_concept_formulated": (
+        "แนวคิด",
+        "สมมติฐาน",
+        "concept",
+        "กรอบแนวคิด",
+        "hypothesis",
+        "technology concept",
+    ),
     "trl_2_application_defined": (
         "แนวทางพัฒนาเทคโนโลยี",
         "แนวทางประยุกต์ใช้",
@@ -45,6 +57,9 @@ SUPPORTED_RULE_PATTERNS: dict[str, tuple[str, ...]] = {
         "กรณีใช้งาน",
         "การใช้งาน",
         "use case",
+        "application defined",
+        "target application",
+        "intended application",
     ),
     "trl_3_proof_of_concept": (
         "ทดลองเบื้องต้น",
@@ -52,20 +67,111 @@ SUPPORTED_RULE_PATTERNS: dict[str, tuple[str, ...]] = {
         "proof of concept",
         "ทดสอบสมมติฐาน",
         "ผลทดลองเบื้องต้น",
+        "preliminary experiment",
+        "initial experiment",
+        "tested",
     ),
-    "trl_3_analytical_results": ("ผลทดลอง", "ผลวิเคราะห์", "บันทึกผลทดสอบ"),
-    "trl_4_lab_validation": ("ห้องปฏิบัติการ", "lab", "ทดสอบต้นแบบ"),
-    "trl_4_integrated_components": ("องค์ประกอบทำงานร่วมกัน", "ทำงานร่วมกันได้", "เชื่อมต่อกัน", "มีต้นแบบ", "ต้นแบบระบบ"),
-    "trl_5_relevant_environment_test": ("สภาพแวดล้อมที่เกี่ยวข้อง", "relevant environment", "แปลงสาธิต"),
-    "trl_5_supporting_performance_data": ("ความปลอดภัย", "สมรรถนะ", "performance"),
-    "trl_6_prototype_demonstration": ("สาธิตต้นแบบ", "prototype demonstration"),
-    "trl_6_relevant_environment_results": ("ผลการสาธิต", "ผลในสภาพแวดล้อมที่เกี่ยวข้อง"),
-    "trl_7_operational_prototype": ("สภาพแวดล้อมปฏิบัติการ", "operational environment"),
-    "trl_7_operational_results": ("ผลการใช้งานจริง", "ผลการสาธิตในงานจริง"),
-    "trl_8_qualification": ("ผ่านการรับรอง", "qualified", "มาตรฐาน", "gmp", "iso", "ce mark"),
-    "trl_8_delivery_readiness": ("พร้อมส่งมอบ", "พร้อมใช้งาน"),
-    "trl_9_successful_operations": ("ใช้งานจริง", "successful operations", "ปฏิบัติการได้สำเร็จ"),
-    "trl_9_post_deployment_results": ("ติดตามผล", "หลังส่งมอบ", "ประเมินผล"),
+    "trl_3_analytical_results": (
+        "ผลทดลอง",
+        "ผลวิเคราะห์",
+        "บันทึกผลทดสอบ",
+        "analytical results",
+        "test results",
+        "recorded results",
+        "results",
+    ),
+    "trl_4_lab_validation": (
+        "ห้องปฏิบัติการ",
+        "lab",
+        "laboratory",
+        "tested the prototype",
+        "prototype tested",
+        "validated in the lab",
+        "lab validation",
+        "ทดสอบต้นแบบ",
+    ),
+    "trl_4_integrated_components": (
+        "องค์ประกอบทำงานร่วมกัน",
+        "ทำงานร่วมกันได้",
+        "เชื่อมต่อกัน",
+        "มีต้นแบบ",
+        "ต้นแบบระบบ",
+        "integrated components",
+        "components work together",
+        "integrated prototype",
+    ),
+    "trl_5_relevant_environment_test": (
+        "สภาพแวดล้อมที่เกี่ยวข้อง",
+        "relevant environment",
+        "tested in a relevant environment",
+        "prototype tested in relevant environment",
+        "แปลงสาธิต",
+    ),
+    "trl_5_supporting_performance_data": (
+        "ความปลอดภัย",
+        "สมรรถนะ",
+        "performance",
+        "safety data",
+        "performance data",
+        "validated",
+    ),
+    "trl_6_prototype_demonstration": (
+        "สาธิตต้นแบบ",
+        "prototype demonstration",
+        "demonstrated prototype",
+        "prototype demonstrated",
+        "system demonstration",
+    ),
+    "trl_6_relevant_environment_results": (
+        "ผลการสาธิต",
+        "ผลในสภาพแวดล้อมที่เกี่ยวข้อง",
+        "demonstration results",
+        "results in relevant environment",
+    ),
+    "trl_7_operational_prototype": (
+        "สภาพแวดล้อมปฏิบัติการ",
+        "operational environment",
+        "tested in operation",
+        "tested in real use",
+    ),
+    "trl_7_operational_results": (
+        "ผลการใช้งานจริง",
+        "ผลการสาธิตในงานจริง",
+        "operational results",
+        "real-world results",
+        "field results",
+    ),
+    "trl_8_qualification": (
+        "ผ่านการรับรอง",
+        "qualified",
+        "มาตรฐาน",
+        "gmp",
+        "iso",
+        "ce mark",
+        "certified",
+    ),
+    "trl_8_delivery_readiness": (
+        "พร้อมส่งมอบ",
+        "พร้อมใช้งาน",
+        "ready for delivery",
+        "ready for deployment",
+        "delivery readiness",
+    ),
+    "trl_9_successful_operations": (
+        "ใช้งานจริง",
+        "successful operations",
+        "ปฏิบัติการได้สำเร็จ",
+        "successful real-world operation",
+        "in production",
+    ),
+    "trl_9_post_deployment_results": (
+        "ติดตามผล",
+        "หลังส่งมอบ",
+        "ประเมินผล",
+        "post-deployment",
+        "post deployment",
+        "follow-up results",
+    ),
 }
 
 MISSING_RULE_PATTERNS: dict[str, tuple[str, ...]] = {
@@ -73,32 +179,67 @@ MISSING_RULE_PATTERNS: dict[str, tuple[str, ...]] = {
         "ยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยี",
         "ยังไม่ได้กำหนดแนวทางพัฒนาเทคโนโลยี",
         "ไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยี",
-        "ยังไม่มีแนวทางพัฒนาเทคโนโลยี",
         "ยังไม่มีแนวทางประยุกต์ใช้",
-        "ยังไม่ได้กำหนดการใช้งาน",
+        "not yet defined",
+        "no use case yet",
+        "application not defined",
     ),
     "trl_3_proof_of_concept": (
-        "ยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลอง",
-        "ไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลอง",
         "ยังไม่มีการทดลอง",
         "ยังไม่ได้ทดลอง",
         "ไม่มีการทดลอง",
         "ไม่มีผลทดลอง",
+        "ยังไม่มีการทดสอบ",
+        "ยังไม่ได้ทดสอบ",
+        "ไม่มีการทดสอบ",
+        "หรือการทดลองใดๆ",
+        "not yet tested",
+        "not tested yet",
+        "no proof of concept yet",
+        "no prototype test yet",
     ),
     "trl_3_analytical_results": (
-        "ยังไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลอง",
-        "ไม่มีการกำหนดแนวทางพัฒนาเทคโนโลยีหรือการทดลอง",
         "ยังไม่มีการทดลอง",
         "ยังไม่ได้ทดลอง",
         "ไม่มีการทดลอง",
-        "ไม่มีผลทดลอง",
+        "ยังไม่มีการทดสอบ",
+        "ยังไม่ได้ทดสอบ",
+        "ไม่มีการทดสอบ",
         "ยังไม่มีผลทดลอง",
         "ยังไม่มีผลวิเคราะห์",
+        "ไม่มีผลทดสอบ",
+        "ยังไม่มีผลทดสอบ",
+        "หรือการทดลองใดๆ",
+        "no test results",
+        "no analytical results",
+        "results not available yet",
+        "not sure about the results",
     ),
 }
 
-NEGATION_MARKERS = ("ยังไม่ได้", "ยังไม่", "ไม่มี", "ไม่เคย", "ไม่ได้")
-UNCERTAIN_MARKERS = ("ยังไม่แน่ใจ", "ไม่แน่ใจ", "อาจ", "น่าจะ", "ยังไม่ชัดเจน")
+NEGATION_MARKERS = (
+    "ยังไม่ได้",
+    "ยังไม่",
+    "ไม่มี",
+    "ไม่เคย",
+    "ไม่ได้",
+    "not yet",
+    "no ",
+    "without",
+    "never",
+)
+UNCERTAIN_MARKERS = (
+    "ยังไม่แน่ใจ",
+    "ไม่แน่ใจ",
+    "อาจ",
+    "น่าจะ",
+    "ยังไม่ชัดเจน",
+    "possibly",
+    "maybe",
+    "may have",
+    "not sure",
+    "unclear",
+)
 RULE_LEVELS = {
     "trl_1_basic_principles": 1,
     "trl_1_documented_research": 1,
@@ -121,13 +262,15 @@ RULE_LEVELS = {
 }
 PROTOTYPE_MARKERS = ("ต้นแบบ", "prototype", "model")
 LAB_MARKERS = ("ห้องปฏิบัติการ", "lab", "laboratory")
-TEST_MARKERS = ("ทดสอบ", "ทดลอง", "ตรวจสอบ", "validate", "validation")
+TEST_MARKERS = ("ทดสอบ", "ทดลอง", "ตรวจสอบ", "validate", "validation", "tested")
 PERFORMANCE_MARKERS = (
     "ประสิทธิภาพ",
     "สมรรถนะ",
     "ทำงานได้",
     "ผ่านเกณฑ์",
     "ตามเกณฑ์",
+    "performance",
+    "safety",
 )
 MEASUREMENT_MARKERS = (
     "วัดผล",
@@ -136,15 +279,18 @@ MEASUREMENT_MARKERS = (
     "บันทึกผล",
     "เก็บข้อมูล",
     "อย่างเป็นระบบ",
+    "measured",
+    "recorded",
 )
 INTEGRATION_NEGATION_MARKERS = (
     "ยังไม่ได้ประกอบ",
     "ยังไม่ประกอบ",
     "ยังไม่เชื่อมต่อ",
     "ยังทำงานร่วมกันไม่ได้",
-    "ยังไม่สามารถทำงานร่วมกัน",
+    "still not integrated",
+    "not integrated yet",
 )
-CLAUSE_BOUNDARY_PATTERN = re.compile(r"[.!?\n;]|\s*(?:แต่|ทว่า|อย่างไรก็ตาม|however)\s*")
+CLAUSE_BOUNDARY_PATTERN = re.compile(r"[.!?\n;]|\s*(?:แต่|ทว่า|อย่างไรก็ตาม|however|but)\s*")
 SPACE_PATTERN = re.compile(r"\s+")
 
 
@@ -270,10 +416,7 @@ def _upsert_missing_evidence(
     if current and current.status == "supported":
         evidence[evidence_id] = EvidenceSignal(
             status="conflicting",
-            matched_text=" | ".join(
-                dict.fromkeys([item for item in (current.matched_text, matched_text) if item])
-            )
-            or None,
+            matched_text=" | ".join(dict.fromkeys([item for item in (current.matched_text, matched_text) if item])) or None,
             notes=notes,
         )
         return

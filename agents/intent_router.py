@@ -14,22 +14,20 @@ class IntentDecision(BaseModel):
 ASSESSMENT_HINTS = (
     "ประเมิน",
     "ช่วยประเมิน",
+    "ช่วยดู trl",
+    "ดู trl",
+    "assessment",
+    "assess",
+    "evaluate",
+    "check my project",
+    "what trl level",
+    "which trl level",
+    "what level are we at",
     "อยู่ trl ไหน",
     "trl level ไหน",
     "trl ระดับไหน",
-    "งานของฉันอยู่ trl",
-    "งานของฉันอยู่ใน trl",
-    "งานของฉันอยู่ระดับไหน",
-    "โครงการนี้อยู่ระดับไหน",
-    "คุณว่างานของฉันอยู่ใน trl",
     "ควรเป็น trl อะไร",
-    "ถือว่าอยู่ระดับไหน",
     "ระดับไหน",
-    "ตอนนี้อยู่",
-    "พร้อมส่งมอบ",
-    "ผ่านการทดสอบ",
-    "หลักฐาน",
-    "assessment",
 )
 ASSESSMENT_CONTEXT_HINTS = (
     "เรามี",
@@ -37,19 +35,19 @@ ASSESSMENT_CONTEXT_HINTS = (
     "ตอนนี้มี",
     "ทีมงาน",
     "โครงการ",
-    "โครงการนี้",
     "งานของฉัน",
     "งานของเรา",
     "ต้นแบบ",
-    "ห้องปฏิบัติการ",
-    "สภาพแวดล้อมที่เกี่ยวข้อง",
-    "ใช้งานจริง",
-    "มีการ",
-    "ยังไม่มี",
-    "ศึกษา",
-    "ทบทวน",
-    "ทดลอง",
-    "พัฒนา",
+    "prototype",
+    "project",
+    "we have",
+    "our project",
+    "our team",
+    "tested",
+    "validated",
+    "demonstrated",
+    "relevant environment",
+    "operational environment",
 )
 QA_HINTS = (
     "คืออะไร",
@@ -59,22 +57,34 @@ QA_HINTS = (
     "นิยาม",
     "เกณฑ์",
     "อะไรบ้าง",
-    "เกี่ยวข้องกับ",
+    "what is",
+    "what's",
+    "compare",
+    "difference",
+    "definition",
+    "describe",
+    "criteria",
+    "evidence",
     "technology readiness level",
 )
 DIRECT_ASSESSMENT_CONTEXT_HINTS = (
     "ช่วยประเมิน",
+    "ช่วยดู trl",
     "ประเมิน trl",
     "ประเมินว่า",
-    "เรามี",
-    "เราทำ",
+    "assessment",
+    "assess",
+    "evaluate",
+    "we have",
+    "our project",
+    "project",
+    "prototype",
+    "tested",
+    "validated",
+    "demonstrated",
     "ตอนนี้มี",
     "ตอนนี้เรา",
     "โครงการ",
-    "โครงการนี้",
-    "งานของฉัน",
-    "งานของเรา",
-    "งานฉัน",
     "งานนี้",
     "ระบบของเรา",
 )
@@ -84,42 +94,50 @@ GENERAL_KNOWLEDGE_QUESTION_HINTS = (
     "อะไรบ้าง",
     "เกี่ยวข้องกับ",
     "ควรนับเป็น",
+    "what does",
+    "what is required",
+    "what evidence",
+    "compare",
+    "difference",
 )
 AMBIGUOUS_HINTS = (
     "ช่วยดูให้หน่อย",
     "ช่วยหน่อย",
+    "can you check this",
+    "can you check",
+    "help me with this",
 )
 LEVEL_QUESTION_HINTS = (
     "อยู่ trl ไหน",
     "trl level ไหน",
     "trl ระดับไหน",
-    "งานของฉันอยู่ trl",
-    "งานของฉันอยู่ใน trl",
-    "งานของฉันอยู่ระดับไหน",
-    "โครงการนี้อยู่ระดับไหน",
-    "คุณว่างานของฉันอยู่ใน trl",
     "ควรเป็น trl อะไร",
-    "ถือว่าอยู่ระดับไหน",
     "อยู่ใน trl",
-    "ระดับไหน",
     "level ไหน",
     "อยู่ระดับไหน",
-    "ตอนนี้อยู่",
+    "what trl level",
+    "which trl level",
+    "what level",
 )
 
 
 def route_trl_intent(query: str) -> IntentDecision:
     normalized = query.strip().lower()
     interpretation = interpret_assessment_input(query)
-    evidence_hits = sum(1 for signal in interpretation.evidence.values() if signal.status in {"supported", "missing", "uncertain", "conflicting"})
+    evidence_hits = sum(
+        1 for signal in interpretation.evidence.values() if signal.status in {"supported", "missing", "uncertain", "conflicting"}
+    )
 
     assessment_score = sum(1 for hint in ASSESSMENT_HINTS if hint in normalized)
     assessment_context_score = sum(1 for hint in ASSESSMENT_CONTEXT_HINTS if hint in normalized)
     direct_assessment_context_score = sum(1 for hint in DIRECT_ASSESSMENT_CONTEXT_HINTS if hint in normalized)
     qa_score = sum(1 for hint in QA_HINTS if hint in normalized)
-    explicit_definition_question = any(hint in normalized for hint in ("คืออะไร", "หมายถึง", "ต่างจาก", "อธิบาย"))
+    explicit_definition_question = any(
+        hint in normalized
+        for hint in ("คืออะไร", "หมายถึง", "ต่างจาก", "อธิบาย", "what is", "what's", "compare", "difference", "describe")
+    )
     general_knowledge_question = any(hint in normalized for hint in GENERAL_KNOWLEDGE_QUESTION_HINTS)
-    asks_for_level = any(hint in normalized for hint in LEVEL_QUESTION_HINTS) or "ประเมิน" in normalized
+    asks_for_level = any(hint in normalized for hint in LEVEL_QUESTION_HINTS) or "ประเมิน" in normalized or "assess" in normalized
     ambiguous = any(hint in normalized for hint in AMBIGUOUS_HINTS)
 
     if explicit_definition_question and assessment_score == 0 and evidence_hits <= 1:

@@ -104,3 +104,21 @@ def test_assessment_agent_target_scenario_produces_early_stage_evidence_signals(
     assert result.evidence["trl_2_application_defined"].status == "missing"
     assert result.evidence["trl_3_proof_of_concept"].status == "missing"
     assert result.evidence["trl_3_analytical_results"].status == "missing"
+
+
+def test_assessment_agent_extracts_english_relevant_environment_evidence():
+    result = interpret_assessment_input(
+        "We have a prototype tested in a relevant environment with performance data and safety data."
+    )
+
+    assert result.evidence["trl_5_relevant_environment_test"].status == "supported"
+    assert result.evidence["trl_5_supporting_performance_data"].status == "supported"
+
+
+def test_assessment_agent_extracts_english_negative_and_uncertain_signals():
+    result = interpret_assessment_input(
+        "We may have a prototype, but it has not yet been tested and we are not sure about the results."
+    )
+
+    assert result.evidence["trl_3_proof_of_concept"].status in {"missing", "uncertain", "conflicting"}
+    assert result.uncertain_evidence

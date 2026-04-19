@@ -1,0 +1,57 @@
+{
+  "description": "Example requests for Sprint 15 bilingual TRL QA and assessment behavior.",
+  "endpoint": "POST /raggy/trl",
+  "cases": [
+    {
+      "id": "bilingual_qa_th",
+      "request": {
+        "query": "TRL 4 คืออะไร"
+      },
+      "expected_response_shape": {
+        "mode": "qa",
+        "language": "th"
+      }
+    },
+    {
+      "id": "bilingual_qa_en",
+      "request": {
+        "query": "What is TRL 4?"
+      },
+      "expected_response_shape": {
+        "mode": "qa",
+        "language": "en"
+      }
+    },
+    {
+      "id": "bilingual_qa_override_en",
+      "request": {
+        "query": "TRL 5 คืออะไร",
+        "response_language": "en"
+      },
+      "expected_response_shape": {
+        "mode": "qa",
+        "language": "en"
+      }
+    },
+    {
+      "id": "bilingual_assessment_en",
+      "request": {
+        "query": "Please assess my project. We have tested the prototype in a relevant environment."
+      },
+      "expected_response_shape": {
+        "mode": "assessment",
+        "language": "en"
+      }
+    },
+    {
+      "id": "bilingual_assessment_mixed",
+      "request": {
+        "query": "ช่วย assess project นี้หน่อย เรามี prototype tested in relevant environment แล้ว"
+      },
+      "expected_response_shape": {
+        "mode": "assessment",
+        "language": "th"
+      }
+    }
+  ]
+}

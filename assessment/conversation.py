@@ -7,6 +7,13 @@ from assessment.evaluator import evaluate_trl_level
 from assessment.response_templates import get_response_message
 from assessment.rules import RuleBaseEntry, load_rule_base
 from assessment.session_state import AssessmentSessionState, InMemoryAssessmentSessionStore
+from language_support import (
+    FOLLOW_UP_QUESTION_EN,
+    choose_text,
+    evidence_description,
+    join_list,
+    localize_missing_evidence,
+)
 
 
 class AssessmentTurnResult(BaseModel):
@@ -69,7 +76,13 @@ def _build_evidence_state_map(state: AssessmentSessionState) -> dict[str, str]:
     return evidence_states
 
 
-def _build_follow_up_question(rule: RuleBaseEntry, evidence_id: str, description_th: str) -> str:
+def _build_follow_up_question(rule: RuleBaseEntry, evidence_id: str, description_th: str, language: str) -> str:
+    if language == "en":
+        return FOLLOW_UP_QUESTION_EN.get(
+            evidence_id,
+            f"Please share more evidence about this point: {evidence_description(evidence_id, description_th, language)}",
+        )
+
     required_ids = [item.id for item in rule.required_evidence]
     if evidence_id in required_ids:
         question_index = min(required_ids.index(evidence_id), len(rule.follow_up_questions) - 1)
@@ -80,6 +93,7 @@ def _build_follow_up_question(rule: RuleBaseEntry, evidence_id: str, description
 def _pick_next_question(
     state: AssessmentSessionState,
     missing_evidence: list[dict[str, str]],
+    language: str,
 ) -> tuple[str | None, str | None]:
     if not missing_evidence:
         return None, None
@@ -91,7 +105,7 @@ def _pick_next_question(
             continue
         if evidence_id in state.rejected_evidence_ids:
             continue
-        question = _build_follow_up_question(rule, evidence_id, item["description_th"])
+        question = _build_follow_up_question(rule, evidence_id, item["description_th"], language)
         _mark_unique(state.asked_evidence_ids, evidence_id)
         state.last_asked_question = question
         return evidence_id, question
@@ -99,21 +113,11 @@ def _pick_next_question(
     return None, None
 
 
-def _join_thai_list(items: list[str]) -> str:
-    if not items:
-        return ""
-    if len(items) == 1:
-        return items[0]
-    if len(items) == 2:
-        return f"{items[0]} และ {items[1]}"
-    return f"{', '.join(items[:-1])} และ {items[-1]}"
-
-
-def _evidence_description_map() -> dict[str, str]:
+def _evidence_description_map(language: str) -> dict[str, str]:
     descriptions: dict[str, str] = {}
     for rule in load_rule_base():
         for item in rule.required_evidence:
-            descriptions[item.id] = item.description_th
+            descriptions[item.id] = evidence_description(item.id, item.description_th, language)
     return descriptions
 
 
@@ -121,12 +125,16 @@ def _evidence_ids_for_level(level: int) -> list[str]:
     return [evidence_id for evidence_id, evidence_level in RULE_LEVELS.items() if evidence_level == level]
 
 
-def _descriptions_for_ids(evidence_ids: list[str]) -> list[str]:
-    descriptions = _evidence_description_map()
+def _descriptions_for_ids(evidence_ids: list[str], language: str) -> list[str]:
+    descriptions = _evidence_description_map(language)
     return [descriptions[evidence_id] for evidence_id in evidence_ids if evidence_id in descriptions]
 
 
-def _build_supported_evidence_explanation(matched_level: int, collected_evidence: dict[str, bool]) -> str | None:
+def _build_supported_evidence_explanation(
+    matched_level: int,
+    collected_evidence: dict[str, bool],
+    language: str,
+) -> str | None:
     if matched_level < 1:
         return None
 
@@ -135,21 +143,23 @@ def _build_supported_evidence_explanation(matched_level: int, collected_evidence
         for item in _get_rule(matched_level).required_evidence
         if bool(collected_evidence.get(item.id))
     ]
-    supported_descriptions = _descriptions_for_ids(supported_ids)
+    supported_descriptions = _descriptions_for_ids(supported_ids, language)
     if not supported_descriptions:
         return None
 
-    return (
-        f"หลักฐานที่รองรับ TRL {matched_level}: "
-        f"{_join_thai_list(supported_descriptions)}"
+    return choose_text(
+        f"หลักฐานที่รองรับ TRL {matched_level}: {join_list(supported_descriptions, language)}",
+        f"Evidence supporting TRL {matched_level}: {join_list(supported_descriptions, language)}",
+        language,
     )
 
 
 def _build_higher_level_blocker_explanations(
     result: AssessmentTurnResult,
     rejected_evidence_ids: list[str],
+    language: str = "th",
 ) -> list[str]:
-    descriptions = _evidence_description_map()
+    descriptions = _evidence_description_map(language)
     explicit_missing_ids = {
         item["id"]
         for item in result.missing_evidence
@@ -177,13 +187,19 @@ def _build_higher_level_blocker_explanations(
 
         if level == 3 and any(evidence_id.startswith("trl_3_") for evidence_id in level_missing_ids):
             lines.append(
-                "เหตุผลที่ยังไม่รองรับ TRL 3: ผู้ใช้ระบุว่ายังไม่มีการทดลอง "
-                "จึงยังไม่มีหลักฐาน proof of concept หรือผลวิเคราะห์/ผลทดสอบรองรับ"
+                choose_text(
+                    "เหตุผลที่ยังไม่รองรับ TRL 3: ยังไม่มีการทดลอง จึงยังไม่มีหลักฐาน proof of concept หรือผลวิเคราะห์/ผลทดสอบรองรับ",
+                    "Why TRL 3 is not supported yet: there is still no experimental evidence, proof of concept, or analytical/test result support.",
+                    language,
+                )
             )
         else:
             lines.append(
-                f"เหตุผลที่ยังไม่รองรับ TRL {level}: "
-                f"ยังไม่มีหลักฐานชัดเจนเรื่อง {_join_thai_list(missing_descriptions)}"
+                choose_text(
+                    f"เหตุผลที่ยังไม่รองรับ TRL {level}: ยังไม่มีหลักฐานชัดเจนเรื่อง {join_list(missing_descriptions, language)}",
+                    f"Why TRL {level} is not supported yet: there is still no clear evidence for {join_list(missing_descriptions, language)}.",
+                    language,
+                )
             )
 
     return lines
@@ -192,6 +208,7 @@ def _build_higher_level_blocker_explanations(
 def _build_additional_recommendation(
     matched_level: int,
     collected_evidence: dict[str, bool],
+    language: str = "th",
 ) -> str | None:
     max_level = max(rule.level for rule in load_rule_base())
     if matched_level < 1 or matched_level >= max_level:
@@ -201,91 +218,116 @@ def _build_additional_recommendation(
     next_rule = _get_rule(matched_level + 1)
 
     current_strengths = [
-        item.description_th
+        evidence_description(item.id, item.description_th, language)
         for item in current_rule.required_evidence
         if bool(collected_evidence.get(item.id))
     ]
     missing_next_level_items = [
-        item.description_th
+        evidence_description(item.id, item.description_th, language)
         for item in next_rule.required_evidence
         if not bool(collected_evidence.get(item.id))
     ]
     if not missing_next_level_items:
         return None
 
-    strengths_text = _join_thai_list(current_strengths[:2]) if current_strengths else current_rule.summary_th
-    gaps_text = _join_thai_list(missing_next_level_items)
-
-    lines = [
-        "คำแนะนำเพิ่มเติมหลังการประเมิน:",
+    strengths_text = join_list(current_strengths[:2], language) if current_strengths else current_rule.name_en
+    gaps_text = join_list(missing_next_level_items, language)
+    return choose_text(
         (
-            f"จากหลักฐานที่มีอยู่ ตอนนี้งานวิจัยอยู่ในช่วง {current_rule.name_th} "
-            f"(TRL {matched_level}) ได้ค่อนข้างชัด โดยเฉพาะในส่วนของ {strengths_text}"
+            "คำแนะนำเพิ่มเติมหลังการประเมิน:\n"
+            f"ตอนนี้หลักฐานที่รองรับ TRL {matched_level} แข็งแรงในส่วนของ {strengths_text}\n"
+            f"หากต้องการขยับไปสู่ TRL {next_rule.level} ควรเสริมหลักฐานเรื่อง {gaps_text}"
         ),
-    ]
-
-    if len(missing_next_level_items) == 1:
-        lines.append(
-            f"หากต้องการขยับไปสู่ {next_rule.name_th} (TRL {next_rule.level}) "
-            f"ประเด็นที่ควรเร่งเติมให้ชัดคือ {missing_next_level_items[0]}"
-        )
-    else:
-        lines.append(
-            f"สำหรับการไปต่อสู่ {next_rule.name_th} (TRL {next_rule.level}) "
-            f"ยังควรทำให้เห็นเพิ่มในเรื่อง {gaps_text}"
-        )
-
-    lines.append(
-        f"ประเด็นเหล่านี้จะช่วยให้ผลงานสอดคล้องกับลักษณะของระดับถัดไปที่เน้นว่า {next_rule.summary_th}"
+        (
+            "Next-step recommendation:\n"
+            f"Your strongest current evidence supports TRL {matched_level}, especially around {strengths_text}.\n"
+            f"To move toward TRL {next_rule.level}, strengthen the evidence for {gaps_text}."
+        ),
+        language,
     )
-    lines.append(
-        f"ถ้าสามารถอธิบายผลการพัฒนาและแนบหลักฐานของส่วนนี้ได้ชัดขึ้น "
-        f"น้ำหนักของการประเมินเพื่อยืนยัน TRL {next_rule.level} จะดีขึ้นมาก"
-    )
-    return "\n".join(lines)
 
 
 def _build_completed_answer(
     result: AssessmentTurnResult,
     collected_evidence: dict[str, bool],
+    language: str,
     rejected_evidence_ids: list[str] | None = None,
 ) -> str:
     lines = [
-        f"ผลการประเมิน TRL: ขณะนี้หลักฐานรองรับอยู่ที่ TRL {result.matched_level}",
+        choose_text(
+            f"ผลการประเมิน TRL: ขณะนี้หลักฐานรองรับอยู่ที่ TRL {result.matched_level}",
+            f"TRL assessment result: the current evidence supports TRL {result.matched_level}.",
+            language,
+        ),
         result.reasoning_summary,
     ]
     supported_evidence_explanation = _build_supported_evidence_explanation(
         result.matched_level,
         collected_evidence,
+        language,
     )
     if supported_evidence_explanation:
         lines.append(supported_evidence_explanation)
 
     if result.decision_status == "downgraded":
-        lines.append(f"ระดับที่พยายามประเมินก่อนหน้าอยู่ที่ TRL {result.candidate_level} แต่หลักฐานยังไม่ครบตามเกณฑ์")
+        lines.append(
+            choose_text(
+                f"ระดับที่พยายามประเมินก่อนหน้าอยู่ที่ TRL {result.candidate_level} แต่หลักฐานยังไม่ครบตามเกณฑ์",
+                f"The initial target was TRL {result.candidate_level}, but the evidence is not complete enough for that level.",
+                language,
+            )
+        )
 
     blocker_explanations = _build_higher_level_blocker_explanations(
         result,
         rejected_evidence_ids or [],
+        language,
     )
     lines.extend(blocker_explanations)
 
-    additional_recommendation = _build_additional_recommendation(result.matched_level, collected_evidence)
+    additional_recommendation = _build_additional_recommendation(result.matched_level, collected_evidence, language)
     if additional_recommendation:
         lines.append(additional_recommendation)
     return "\n\n".join(lines)
 
 
-def _build_follow_up_answer(candidate_level: int, matched_level: int, next_question: str) -> str:
+def _build_follow_up_answer(candidate_level: int, matched_level: int, next_question: str, language: str) -> str:
     if matched_level > 0:
-        status_line = f"ผลการประเมิน TRL เบื้องต้น: หลักฐานที่มีตอนนี้รองรับได้ถึง TRL {matched_level}"
+        status_line = choose_text(
+            f"ผลการประเมิน TRL เบื้องต้น: หลักฐานที่มีตอนนี้รองรับได้ถึง TRL {matched_level}",
+            f"Preliminary TRL assessment: the current evidence supports up to TRL {matched_level}.",
+            language,
+        )
     else:
-        status_line = get_response_message("insufficient_evidence", mode="assessment")
-    return (
-        f"{status_line}\n\n"
-        f"ยังยืนยัน TRL {candidate_level} ไม่ได้ เพราะยังมีหลักฐานที่ต้องยืนยันเพิ่มเติม\n\n"
-        f"คำถามถัดไป: {next_question}"
+        status_line = get_response_message("insufficient_evidence", mode="assessment", language=language)
+    return choose_text(
+        (
+            f"{status_line}\n\n"
+            f"ยังยืนยัน TRL {candidate_level} ไม่ได้ เพราะยังมีหลักฐานที่ต้องยืนยันเพิ่มเติม\n\n"
+            f"คำถามถัดไป: {next_question}"
+        ),
+        (
+            f"{status_line}\n\n"
+            f"TRL {candidate_level} is not confirmed yet because more evidence is still needed.\n\n"
+            f"Next question: {next_question}"
+        ),
+        language,
     )
+
+
+def _localize_reasoning_summary(candidate_level: int, matched_level: int, missing_evidence: list[dict[str, str]], language: str) -> str:
+    if language != "en":
+        if matched_level == candidate_level and not missing_evidence:
+            return f"หลักฐานครบตามเกณฑ์ TRL {matched_level}"
+        if matched_level > 0:
+            return f"หลักฐานของ TRL {candidate_level} ยังไม่ครบ จึงลดระดับมาที่ TRL {matched_level}"
+        return "ยังไม่มีหลักฐานเพียงพอสำหรับยืนยันระดับ TRL ตามกฎที่กำหนด"
+
+    if matched_level == candidate_level and not missing_evidence:
+        return f"The evidence fully supports TRL {matched_level}."
+    if matched_level > 0:
+        return f"The evidence is not complete enough for TRL {candidate_level}, so the supported level is TRL {matched_level}."
+    return "There is not enough evidence to confirm even the minimum TRL level yet."
 
 
 def _infer_progressive_floor(state: AssessmentSessionState) -> int:
@@ -307,11 +349,14 @@ def run_assessment_turn(
     session_id: str | None = None,
     store: InMemoryAssessmentSessionStore | None = None,
     candidate_level: int | None = None,
+    language: str = "th",
 ) -> AssessmentTurnResult:
     session_store = store or InMemoryAssessmentSessionStore()
     state = session_store.get(session_id) if session_id else None
     if state is None:
         state = session_store.create(session_id=session_id)
+
+    state.preferred_language = language
 
     if candidate_level is not None:
         state.candidate_level = max(state.candidate_level, candidate_level)
@@ -320,8 +365,15 @@ def run_assessment_turn(
 
     evidence_states = _build_evidence_state_map(state)
     evaluation = evaluate_trl_level(evidence_states, target_level=state.candidate_level)
+    localized_missing_evidence = localize_missing_evidence(evaluation.missing_evidence, language)
+    localized_reasoning_summary = _localize_reasoning_summary(
+        state.candidate_level,
+        evaluation.matched_level,
+        evaluation.missing_evidence,
+        language,
+    )
     state.matched_level = evaluation.matched_level
-    state.missing_evidence = evaluation.missing_evidence
+    state.missing_evidence = localized_missing_evidence
     progressive_floor = _infer_progressive_floor(state)
     current_supported_level = max(evaluation.matched_level, progressive_floor)
 
@@ -337,15 +389,15 @@ def run_assessment_turn(
             candidate_level=state.candidate_level,
             matched_level=evaluation.matched_level,
             decision_status="completed",
-            reasoning_summary=evaluation.reasoning_summary,
+            reasoning_summary=localized_reasoning_summary,
             missing_evidence=[],
         )
-        result.answer_text = _build_completed_answer(result, state.collected_evidence, state.rejected_evidence_ids)
+        result.answer_text = _build_completed_answer(result, state.collected_evidence, language, state.rejected_evidence_ids)
         session_store.save(state)
         return result
 
     if evaluation.missing_evidence and not explicit_blockers:
-        next_evidence_id, next_question = _pick_next_question(state, evaluation.missing_evidence)
+        next_evidence_id, next_question = _pick_next_question(state, localized_missing_evidence, language)
         if next_question:
             state.status = "collecting"
             result = AssessmentTurnResult(
@@ -354,12 +406,13 @@ def run_assessment_turn(
                     candidate_level=state.candidate_level,
                     matched_level=current_supported_level,
                     next_question=next_question,
+                    language=language,
                 ),
                 candidate_level=state.candidate_level,
                 matched_level=current_supported_level,
                 decision_status="needs_more_evidence",
-                reasoning_summary=evaluation.reasoning_summary,
-                missing_evidence=evaluation.missing_evidence,
+                reasoning_summary=localized_reasoning_summary,
+                missing_evidence=localized_missing_evidence,
                 next_question=next_question,
                 next_evidence_id=next_evidence_id,
             )
@@ -370,9 +423,14 @@ def run_assessment_turn(
     state.last_asked_question = None
     final_supported_level = max(evaluation.matched_level, progressive_floor)
     decision_status = "downgraded" if final_supported_level > 0 else "insufficient_evidence"
-    reasoning_summary = evaluation.reasoning_summary
+    reasoning_summary = _localize_reasoning_summary(
+        state.candidate_level,
+        final_supported_level,
+        evaluation.missing_evidence,
+        language,
+    )
     if decision_status == "insufficient_evidence":
-        answer_text = get_response_message("insufficient_evidence", mode="assessment")
+        answer_text = get_response_message("insufficient_evidence", mode="assessment", language=language)
     else:
         answer_text = ""
 
@@ -383,10 +441,10 @@ def run_assessment_turn(
         matched_level=final_supported_level,
         decision_status=decision_status,
         reasoning_summary=reasoning_summary,
-        missing_evidence=evaluation.missing_evidence,
+        missing_evidence=localized_missing_evidence,
     )
     if decision_status == "downgraded":
-        result.answer_text = _build_completed_answer(result, state.collected_evidence, state.rejected_evidence_ids)
+        result.answer_text = _build_completed_answer(result, state.collected_evidence, language, state.rejected_evidence_ids)
 
     session_store.save(state)
     return result

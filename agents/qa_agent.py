@@ -30,11 +30,12 @@ def answer_general_qa(
     query: str,
     rag_answer: str | None,
     retrieval_status: str = "completed",
+    language: str = "th",
 ) -> QAAgentResponse:
     normalized = query.lower()
     if any(hint in normalized for hint in OFF_TOPIC_HINTS) and not is_trl_related(query):
         return QAAgentResponse(
-            answer_text=get_response_message("off_topic", mode="qa"),
+            answer_text=get_response_message("off_topic", mode="qa", language=language),
             source="off_topic_guard",
         )
 
@@ -43,11 +44,11 @@ def answer_general_qa(
 
     if retrieval_status == "retrieval_failed":
         return QAAgentResponse(
-            answer_text=get_response_message("technical_error", mode="qa"),
+            answer_text=get_response_message("technical_error", mode="qa", language=language),
             source="retrieval_failure_fallback",
         )
 
     return QAAgentResponse(
-        answer_text=get_response_message("insufficient_evidence", mode="qa"),
+        answer_text=get_response_message("insufficient_evidence", mode="qa", language=language),
         source="qa_fallback",
     )

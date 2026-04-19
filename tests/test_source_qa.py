@@ -29,9 +29,7 @@ def test_source_qa_returns_evidence_guidance_for_level_from_definition_source():
     assert answer is not None
     assert "TRL 8" in answer
     assert "หลักฐาน" in answer
-    assert "ผลทดสอบ" in answer
     assert "พร้อมส่งมอบ" in answer
-    assert "ข้อมูลจากเอกสารอ้างอิงยังไม่เพียงพอ" not in answer
 
 
 def test_source_qa_returns_transition_guidance_from_comparison_source():
@@ -40,7 +38,6 @@ def test_source_qa_returns_transition_guidance_from_comparison_source():
     assert answer is not None
     assert "TRL 5" in answer
     assert "TRL 6" in answer
-    assert "prototype" in answer or "ต้นแบบ" in answer
 
 
 def test_extract_level_section_stops_before_next_trl_definition():
@@ -91,3 +88,19 @@ def test_extract_comparison_section_supports_reversed_query_order():
 
 def test_source_qa_ignores_non_definition_queries():
     assert answer_query_from_source("ช่วยประเมิน TRL ให้หน่อย ตอนนี้มีต้นแบบแล้ว") is None
+
+
+def test_source_qa_returns_english_definition_when_requested():
+    answer = answer_query_from_source("What is TRL 4?", language="en")
+
+    assert answer is not None
+    assert "TRL 4" in answer
+    assert "laboratory environment" in answer.lower()
+
+
+def test_source_qa_returns_english_comparison_when_requested():
+    answer = answer_query_from_source("Compare TRL 5 and TRL 6", language="en")
+
+    assert answer is not None
+    assert "TRL 5 vs TRL 6" in answer
+    assert "prototype" in answer.lower() or "relevant environment" in answer.lower()

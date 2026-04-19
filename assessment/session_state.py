@@ -23,6 +23,7 @@ class AssessmentSessionState(BaseModel):
     last_asked_question: Optional[str] = None
     asked_evidence_ids: list[str] = Field(default_factory=list)
     status: str = "collecting"
+    preferred_language: str = "th"
     created_at: str = Field(default_factory=utc_now_iso)
     updated_at: str = Field(default_factory=utc_now_iso)
 
